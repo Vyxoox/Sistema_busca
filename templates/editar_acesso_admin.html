@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Acesso - DER</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        :root {
+            --bg: #f3f6fb;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --line: #dbe2ea;
+            --primary: #1f4b8f;
+            --primary-hover: #2d5da8;
+            --ok: #166534;
+            --ok-soft: #dcfce7;
+            --err: #b91c1c;
+            --err-soft: #fee2e2;
+            --neutral: #1e293b;
+            --header-bg: #e7e247;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--header-bg);
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .TituloHeader { text-align: center; }
+        .titulo { color: #001032; font-size: 32px; font-weight: bold; }
+        .subtitulo { color: #001032; font-size: 24px; font-weight: bold; margin-top: 4px; }
+
+        .main-content {
+            flex: 1;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .form-card {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 { margin: 0 0 8px; text-align: center; color: var(--neutral); font-size: 24px; }
+        .user-highlight { color: var(--primary); font-weight: 700; }
+        .subtitle { text-align: center; color: var(--muted); margin-bottom: 32px; font-size: 14px; }
+
+        .form-group { margin-bottom: 24px; }
+
+        label.main-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--neutral);
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 15px;
+            background-color: #f8fafc;
+        }
+
+        fieldset {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            background: #fcfdfe;
+        }
+
+        legend {
+            padding: 0 10px;
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .perm-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .perm-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .perm-item:hover { background: #f1f5f9; }
+
+        .perm-item input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .perm-text { font-size: 14px; color: var(--text); }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+        .btn-cancel { background: #64748b; color: white; }
+        .btn-cancel:hover { background: #475569; }
+
+        /* Mensagens Flash */
+        .flash {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .flash.error { background: var(--err-soft); color: var(--err); }
+
+        footer {
+            background: #fff;
+            text-align: center;
+            border-top: 1px solid var(--line);
+            padding: 24px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+        <div class="TituloHeader">
+            <div class="titulo">Departamento de Estradas e Rodagem</div>
+            <div class="subtitulo">Relatório de Funcionários</div>
+        </div>
+        <img src="{{ url_for('static', filename='LOGO_DER.jpg') }}" alt="logo do DER" style="width: 110px; height: 110px; border-radius: 50%;">
+    </header>
+
+    <div class="main-content">
+        <div class="form-card">
+            <h1>Editar Acesso</h1>
+            <p class="subtitle">Configurando permissões para <span class="user-highlight">{{ usuario_alvo.login }}</span></p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group">
+                    <label class="main-label">Perfil de Lotação</label>
+                    <select name="perfil" required>
+                        <option value="">Selecione o perfil</option>
+                        {% for p in perfis_validos %}
+                        <option value="{{ p }}" {% if usuario_alvo.perfil == p %} selected{% endif %}>{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <fieldset>
+                    <legend>Permissões Especiais</legend>
+                    <div class="perm-grid">
+                        {% for perm in permissoes_validas %}
+                        <label class="perm-item">
+                            <input type="checkbox" name="permissoes" value="{{ perm }}" {% if perm in permissoes_atuais %} checked {% endif %}>
+                            <span class="perm-text">{{ perm | replace('_', ' ') | capitalize }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    <a href="{{ url_for('usuarios.listar_admin') }}" class="btn btn-cancel">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+    </footer>
+</body>
+</html>

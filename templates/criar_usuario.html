@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Administrador - DER</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        :root {
+            --bg: #f3f6fb;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --line: #dbe2ea;
+            --primary: #1f4b8f;
+            --primary-hover: #2d5da8;
+            --err: #b91c1c;
+            --err-soft: #fee2e2;
+            --neutral: #1e293b;
+            --header-bg: #e7e247;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--header-bg);
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .TituloHeader { text-align: center; }
+        .titulo { color: #001032; font-size: 32px; font-weight: bold; }
+        .subtitulo { color: #001032; font-size: 24px; font-weight: bold; margin-top: 4px; }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .form-card {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h2 { margin: 0 0 24px; text-align: center; color: var(--neutral); }
+
+        .form-group { margin-bottom: 20px; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(31, 75, 143, 0.1);
+        }
+
+        input.is-invalid, select.is-invalid {
+            border-color: var(--err);
+            background-color: #fffafb;
+        }
+
+        .error-message {
+            color: var(--err);
+            font-size: 12px;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn:hover { background: var(--primary-hover); }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { color: var(--primary); }
+
+        footer {
+            background: #fff;
+            text-align: center;
+            border-top: 1px solid var(--line);
+            padding: 24px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+        <div class="TituloHeader">
+            <div class="titulo">Departamento de Estradas e Rodagem</div>
+            <div class="subtitulo">Relatório de Funcionários</div>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <div class="form-card">
+            <h2>Novo Administrador</h2>
+
+            <form method="post" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group">
+                    <label for="login">Nome de Usuário</label>
+                    <input type="text" id="login" name="login"
+                           class="{{ 'is-invalid' if errors.login else '' }}"
+                           value="{{ form_data.login or '' }}" required>
+                    {% if errors.login %}<div class="error-message">{{ errors.login }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password"
+                           class="{{ 'is-invalid' if errors.password else '' }}" required>
+                    {% if errors.password %}<div class="error-message">{{ errors.password }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Confirmar Senha</label>
+                    <input type="password" id="confirm_password" name="confirm_password"
+                           class="{{ 'is-invalid' if errors.confirm_password else '' }}" required>
+                    {% if errors.confirm_password %}<div class="error-message">{{ errors.confirm_password }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="lotacao">Lotação de Acesso</label>
+                    <select id="lotacao" name="lotacao" class="{{ 'is-invalid' if errors.lotacao else '' }}" required>
+                        <option value="">Selecione uma lotação</option>
+                        <option value="CGR.9" {% if form_data.lotacao == 'CGR.9' %}selected{% endif %}>CGR.9 - Coordenadoria Geral Regional</option>
+                        <option value="CA.9" {% if form_data.lotacao == 'CA.9' %}selected{% endif %}>CA.9 - Coordenadoria Administrativa</option>
+                        <option value="CO.9" {% if form_data.lotacao == 'CO.9' %}selected{% endif %}>CO.9 - Coordenadoria de Conservação</option>
+                        <option value="CT.9" {% if form_data.lotacao == 'CT.9' %}selected{% endif %}>CT.9 - Coordenadoria Técnica</option>
+                        <option value="SA.9" {% if form_data.lotacao == 'SA.9' %}selected{% endif %}>SA.9 - Serviço de Pessoal</option>
+                    </select>
+                    {% if errors.lotacao %}<div class="error-message">{{ errors.lotacao }}</div>{% endif %}
+                </div>
+
+                <button type="submit" class="btn">Criar Administrador</button>
+            </form>
+
+            <a href="{{ url_for('usuarios.listar_admin') }}" class="back-link">← Voltar para listagem</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+    </footer>
+</body>
+</html>

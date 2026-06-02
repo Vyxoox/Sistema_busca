@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Reset de Senha - DER</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        :root {
+            --bg: #f3f6fb;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --line: #dbe2ea;
+            --primary: #1f4b8f;
+            --primary-hover: #2d5da8;
+            --ok: #166534;
+            --ok-soft: #dcfce7;
+            --err: #b91c1c;
+            --err-soft: #fee2e2;
+            --neutral: #1e293b;
+            --header-bg: #e7e247;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--header-bg);
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .TituloHeader { text-align: center; }
+        .titulo { color: #001032; font-size: 32px; font-weight: bold; }
+        .subtitulo { color: #001032; font-size: 24px; font-weight: bold; margin-top: 4px; }
+
+        .main-content {
+            flex: 1;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-card {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h2 { margin: 0 0 8px; text-align: center; color: var(--neutral); font-size: 24px; }
+        .user-info { text-align: center; margin-bottom: 32px; font-size: 14px; color: var(--muted); }
+        .user-info strong { color: var(--primary); }
+
+        .form-group { margin-bottom: 20px; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--neutral);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 15px;
+            box-sizing: border-box;
+            background: #fcfdfe;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(31, 75, 143, 0.1);
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        .btn-cancel { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+        .btn-cancel:hover { background: #f1f5f9; color: var(--neutral); }
+
+        /* Mensagens Flash */
+        .flash {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .flash.success { background: var(--ok-soft); color: var(--ok); }
+        .flash.error { background: var(--err-soft); color: var(--err); }
+
+        footer {
+            background: #fff;
+            text-align: center;
+            border-top: 1px solid var(--line);
+            padding: 24px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+        <div class="TituloHeader">
+            <div class="titulo">Departamento de Estradas e Rodagem</div>
+            <div class="subtitulo">Relatório de Funcionários</div>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <div class="form-card">
+            <h2>Reset de Senha</h2>
+            <p class="user-info">Definindo nova senha para <strong>{{ usuario_alvo.login }}</strong></p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group">
+                    <label>Nova Senha</label>
+                    <input type="password" name="password" minlength="8" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label>Confirmar Nova Senha</label>
+                    <input type="password" name="confirm_password" minlength="8" required>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Salvar Nova Senha</button>
+                    <a class="btn btn-cancel" href="{{ url_for('usuarios.listar_admin') }}">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+    </footer>
+</body>
+</html>

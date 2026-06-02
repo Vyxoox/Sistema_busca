@@ -1,0 +1,441 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Servidor</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f4f4; }
+        .container { max-width: 900px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        h2 { margin-top: 25px; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type=text], input[type=date], input[type=email], select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #5c80bc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #2980b9; }
+        .cancelar { margin-left: 10px; color: #bf1a2f; text-decoration: none; }
+
+        header {
+            background-color: #e7e247;
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 10px 20px;
+        }
+        .TituloHeader { text-align: center; }
+        .titulo {
+            color: rgb(0, 16, 50);
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .subtitulo {
+            color: rgb(0, 16, 50);
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px 20px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .ramal-group {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 10px;
+        }
+
+        .prefixo-fixo {
+            background: #eee;
+        }
+
+        small {
+            color: #666;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .foto-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 40px;
+            margin: 20px 0 25px 0;
+            padding: 24px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            min-height: 180px;
+        }
+
+        .foto-upload {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .foto-upload label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #1f2937;
+            font-size: 15px;
+        }
+
+        .foto-upload input[type="file"] {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .foto-upload small {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .foto-preview-box {
+            width: 180px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .foto-preview-box label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #1f2937;
+            font-size: 15px;
+        }
+
+        .foto-preview-box img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border: 2px solid #d1d5db;
+            border-radius: 12px;
+            background: #f3f4f6;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .foto-section {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                min-height: auto;
+            }
+
+            .foto-upload {
+                width: 100%;
+                align-items: center;
+            }
+
+            .foto-preview-box {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<header>
+    <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+    <div class="TituloHeader">
+        <div class="titulo">Departamento de Estradas e Rodagem</div>
+        <div class="subtitulo">Relatório de Funcionários</div>
+    </div>
+    <div></div>
+</header>
+<body>
+    <div class="container">
+        <h1>Novo Servidor</h1>
+
+        <form method="post" enctype="multipart/form-data">
+            <input type="hidden" name="vinculo" value="SERVIDOR">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <h2>Identificação</h2>
+            <div class="form-grid">
+                <div class="full-width">
+                    <label >NOME COMPLETO*</label>
+                    <input  placeholder="Teste da Silva" name="nome_completo" required type="text">
+                </div>
+
+                <div class="full-width">
+                    <h2>Foto</h2>
+                    <div class="foto-section">
+                        <div class="foto-upload">
+                            <label for="foto">Foto do Funcionário</label>
+                            <input type="file" name="foto" id="foto" accept="image/*" onchange="previewFoto(event)">
+                            <small>Selecione uma imagem JPG ou PNG.</small>
+                        </div>
+
+                        <div class="foto-preview-box">
+                            <label>Pré-visualização</label>
+                            <img id="preview-foto"
+                                 src="{{ url_for('static', filename='img/sem_foto.jpg') }}"
+                                 alt="Pré-visualização">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div>
+                    <label>CPF*</label>
+                    <input placeholder="123.456.789-01" type="text" name="cpf" id="cpf" required oninput="mascaraCPF(this)">
+                </div>
+
+                <div>
+                    <label>RG</label>
+                    <input placeholder="12.345.678-9" type="text" name="rg" id="rg" oninput="mascaraRG(this)">
+                </div>
+
+                <div>
+                    <label>CIN</label>
+                    <input placeholder="123.456.789-01" type="text" name="cin">
+                </div>
+
+                <div>
+                    <label>TÍTULO DE ELEITOR</label>
+                    <input placeholder="1234 5678 9012" type="text" name="titulo_eleitor">
+                </div>
+
+                <div>
+                    <label>PIS/PASEP*</label>
+                    <input placeholder="123.45678.90-1" type="text" name="pis_pasep" required>
+                </div>
+
+                <div>
+                    <label>MATRÍCULA*</label>
+                    <input placeholder="2026001" type="text" name="matricula" required>
+                </div>
+
+                <div>
+                    <label>DATA DE NASCIMENTO</label>
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_nasc">
+                </div>
+            </div>
+
+            <h2>Contato</h2>
+            <div class="form-grid">
+                <div class="full-width">
+                    <label>ENDEREÇO RESIDENCIAL*</label>
+                    <input placeholder="Rua Teste n°32 Jardim Tes, São José do Rio Preto" type="text" name="endereco_residencial" required>
+                </div>
+
+                <div>
+                    <label>TELEFONE PESSOAL</label>
+                    <input placeholder="(17) 99123-4567" type="text" name="telefone_pessoal">
+                </div>
+
+                <div>
+                    <label>EMAIL PESSOAL</label>
+                    <input placeholder="joao.silva@email.com" type="email" name="email_pessoal">
+                </div>
+
+                <div>
+                    <label>EMAIL INSTITUCIONAL*</label>
+                    <input placeholder="joao.silva@der.sp.gov.br" type="email" name="email_institucional">
+                    <small>Se não houver email próprio, o sistema poderá usar o email da sede.</small>
+                </div>
+
+                <div>
+                    <label>RAMAL*</label>
+                    <div class="ramal-group">
+                        <input type="text" class="prefixo-fixo" value="(17) 3218 - " readonly>
+                        <input type="text" name="ramal" placeholder="Digite apenas o ramal ex:4567" required>
+                    </div>
+                </div>
+            </div>
+
+            <h2>Dados Funcionais</h2>
+            <div class="form-grid">
+                <div>
+                    <label>TIPO*</label>
+                    <select name="tipo" required>
+                      <option value="">Selecione</option>
+                      {% for opcao in opcoes_tipo %}
+                      <option value="{{ opcao }}" {% if func and (func.tipo or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>SUBTIPO DE VÍNCULO</label>
+                    <select name="subtipo_vinculo" required>
+                      <option value="">Selecione</option>
+                      {% for opcao in opcoes_subtipo_vinculo %}
+                        <option value="{{ opcao }}" {% if func and (func.subtipo_vinculo or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>FORMA DE INGRESSO*</label>
+                    <select name="forma_ingresso" required>
+                      <option value="">Selecione</option>
+                      {% for opcao in opcoes_forma_ingresso %}
+                      <option value="{{ opcao }}" {% if func and (func.forma_ingresso or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>PRONTUÁRIO FUNCIONAL</label>
+                    <input placeholder="ex: 0012345" type="text" name="prontuario_funcional">
+                </div>
+
+                <div>
+                    <label>CARGO EM EXERCÍCIO</label>
+                    <input placeholder="Analista Administrativo" type="text" name="cargo_exercicio">
+                </div>
+
+                <div>
+                    <label>CARGO DE ORIGEM</label>
+                    <input placeholder="Assistente Técnico" type="text" name="cargo_origem">
+                </div>
+
+                <div>
+                    <label>LOTAÇÃO</label>
+                    <select name="lotacao" required>
+                      <option value="">Selecione</option>
+                      {% for opcao in opcoes_lotacao %}
+                        <option value="{{ opcao }}" {% if func and (func.lotacao or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>ÁREA</label>
+                    <select name="area" required>
+                      <option value="">Selecione</option>
+                      {% for opcao in opcoes_area %}
+                        <option value="{{ opcao }}" {% if func and (func.area or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>COORDENADORIA*</label>
+                    <select name="coordenadoria" required>
+                      <option value="">Selecione</option>
+                      {% for opcao in opcoes_coordenadoria %}
+                        <option value="{{ opcao }}" {% if func and (func.coordenadoria or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>DOE / PORTARIA</label>
+                    <input placeholder="DOE 1234/2020" type="text" name="doe_portaria">
+                </div>
+            </div>
+
+            <h2>Datas e Situação</h2>
+            <div class="form-grid">
+                <div>
+                    <label>DATA DE INGRESSO NO DER</label>
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_ingresso_der">
+                </div>
+
+                <div>
+                    <label>DATA DE INÍCIO</label>
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_inicio">
+                </div>
+
+                <div>
+                    <label>DATA DE ADMISSÃO</label>
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_admissao">
+                </div>
+
+                <div>
+                    <label>SITUAÇÃO*</label>
+                    <select name="situacao" id="situacao" required onchange="toggleDataDesligamento()">
+                      <option value="">Selecione</option>
+                      {% for opcao in opcoes_situacao %}
+                      <option value="{{ opcao }}" {% if func and (func.situacao or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>DATA DE DESLIGAMENTO</label>
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_desligamento">
+                </div>
+            </div>
+
+            <button type="submit">Salvar</button>
+            <a href="{{ url_for('painel') }}" class="cancelar">Cancelar</a>
+        </form>
+    </div>
+
+    <footer>
+        <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+        <p>Conteúdo Restrito e Sigiloso – Protegido pela LGPD</p>
+    </footer>
+
+    <script>
+        function mascaraCPF(i) {
+            let v = i.value;
+            v = v.replace(/\D/g, "");
+            if (v.length > 11) v = v.substring(0, 11);
+            if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+            else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
+            else if (v.length > 3) v = v.replace(/(\d{3})(\d{3})/, "$1.$2");
+            i.value = v;
+        }
+
+        function mascaraRG(i) {
+            let v = i.value;
+            v = v.replace(/\D/g, "");
+            if (v.length > 9) v = v.substring(0, 9);
+            if (v.length > 8) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4");
+            else if (v.length > 5) v = v.replace(/(\d{2})(\d{3})(\d{3})/, "$1.$2.$3");
+            else if (v.length > 2) v = v.replace(/(\d{2})(\d{3})/, "$1.$2");
+            i.value = v;
+        }
+
+        function previewFoto(event) {
+            const input = event.target;
+            const preview = document.getElementById('preview-foto');
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+</body>
+</html>

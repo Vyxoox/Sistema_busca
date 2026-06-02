@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; }
+        .main { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 145px); padding: 20px; }
+        .login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; }
+        h2 { text-align: center; color: #333; }
+        input[type=text], input[type=password] { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background: #5c80bc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #7394d1; }
+        .error { color: #bf1a2f; text-align: center; }
+        header{
+            background-color: #e7e247;
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 10px 20px;
+            border-top-radius: 10px;
+        }
+        .TituloHeader{
+              text-align: center;
+}
+        .titulo{
+            color: rgb(0, 16, 50);
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .subtitulo{
+            color: rgb(0, 16, 50);
+            font-size:24px;
+            font-weight: bold;
+            margin-top:4px;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+    <header>
+    <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+            <div class="TituloHeader">
+                <div class="titulo">Departamento de Estradas e Rodagem</div>
+                <div class="subtitulo">Relatório de Funcionários</div>
+            </div>
+            <div></div>
+
+
+        </header>
+<body>
+    <div class="main">
+        <div class="login-box">
+        <h2>Login</h2>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{csrf_token()}}">
+            <input type="text" name="login" placeholder="Usuário" required>
+            <input type="password" name="password" placeholder="Senha" required>
+            <button type="submit">Entrar</button>
+        </form>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="error">
+                    {% for msg in messages %}{{ msg }}{% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        </div>
+    </div>
+        <footer>
+            <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+            <p>Conteúdo Restrito e Sigiloso – Protegido pela LGPD</p>
+        </footer>
+
+</body>
+</html>

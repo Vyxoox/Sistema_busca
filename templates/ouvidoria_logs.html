@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Ouvidoria e Logs</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #dbe2ea;
+      --primary: #1f4b8f;
+      --ok: #166534;
+      --ok-soft: #dcfce7;
+      --err: #b91c1c;
+      --err-soft: #fee2e2;
+      --alert: #b45309;
+      --alert-soft: #fef3c7;
+      --neutral: #1e293b;
+      --neutral-soft: #e2e8f0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1320px;
+      margin: 24px auto;
+      background: var(--card);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      max-width: 760px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 9px 13px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #fff;
+      background: var(--primary);
+      border: 0;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .btn.gray { background: #64748b; }
+    .btn.clear { background: #0f172a; }
+
+    .kpi-grid {
+      margin: 14px 0 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+
+    .kpi span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .kpi strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 24px;
+      color: var(--text);
+    }
+
+    .filtros {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+
+    .filtro-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .helper {
+      margin: 2px 0 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .flash {
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .flash.success {
+      background: #dcfce7;
+      color: #14532d;
+      border-color: #86efac;
+    }
+
+    .flash.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 9px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e8eef8;
+      color: #0b2248;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    .id-col { width: 70px; }
+    .tipo-col { width: 110px; }
+    .status-col { width: 120px; }
+    .origem-col { width: 240px; }
+    .acoes-col { width: 124px; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    .badge-alerta { color: var(--alert); background: var(--alert-soft); }
+    .badge-falha { color: var(--err); background: var(--err-soft); }
+    .badge-operacao { color: var(--neutral); background: var(--neutral-soft); }
+
+    .status-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-sucesso { color: var(--ok); background: var(--ok-soft); }
+    .status-falha { color: var(--err); background: var(--err-soft); }
+    .status-outro { color: #374151; background: #e5e7eb; }
+
+    .acao {
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 2px;
+    }
+
+    .resumo {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .rota {
+      color: var(--muted);
+      font-size: 12px;
+      word-break: break-word;
+      margin-top: 2px;
+    }
+
+    .btn-small {
+      padding: 7px 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #fff;
+      background: #334155;
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .paginacao {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .empty { color: var(--muted); }
+
+    @media (max-width: 920px) {
+      .container { margin: 10px; padding: 14px; }
+      h1 { font-size: 22px; }
+      table { font-size: 12px; }
+    }
+
+    .check-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .check-inline input {
+      width: auto;
+    }
+
+    .filtros-ativos { margin: 0 0 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; }
+    .filtros-ativos strong { display: block; margin-bottom: 6px; font-size: 12px; color: #334155; text-transform: uppercase; letter-spacing: .04em; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { display: inline-block; padding: 4px 8px; border-radius: 999px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1e3a8a; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="top">
+    <div>
+      <h1>Ouvidoria e Logs de Seguranca</h1>
+      <p class="subtitle">Lista simplificada para operacao humana. Use "Ver detalhes" para abrir o contexto completo do evento.</p>
+    </div>
+    <div class="top-actions">
+      <a class="btn gray" href="{{ url_for('painel') }}">Voltar ao Painel</a>
+      <a class="btn" href="{{ url_for('ouvidoria.exportar_logs_csv', **filtros) }}">Exportar CSV</a>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><span>IPs bloqueados agora</span><strong>{{ total_ips_bloqueados }}</strong></div>
+    <div class="kpi"><span>Total no filtro</span><strong>{{ total }}</strong></div>
+    <div class="kpi"><span>Sucessos</span><strong>{{ total_sucesso }}</strong></div>
+    <div class="kpi"><span>Falhas</span><strong>{{ total_falha }}</strong></div>
+    <div class="kpi"><span>Alertas</span><strong>{{ total_alerta }}</strong></div>
+  </div>
+
+  {% if ips_bloqueados_ativos %}
+      <div class="helper">
+          IPs bloqueados ativos:
+          {% for ip in ips_bloqueados_ativos %}
+          <a class="btn-small" href="{{ url_for('ouvidoria.logs_ouvidoria', q=filtros.q, usuario=filtros.usuario, acao=filtros.acao, status=filtros.status, data_inicio=filtros.data_inicio, data_fim=filtros.data_fim,somente_bloqueados='1', ip_bloqueado=ip, per_page=per_page) }}">{{ ip }}</a>
+          {% endfor %}
+      </div>
+  {% endif %}
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash {{ category if category in ['success', 'error'] else 'success' }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="get" action="{{ url_for('ouvidoria.logs_ouvidoria') }}" class="filtros">
+    <input type="text" name="q" placeholder="Busca Geral" value="{{ filtros.q }}">
+
+    <input type="text" name="usuario" placeholder="Usuario" value="{{ filtros.usuario }}">
+
+    <select name="acao">
+      <option value="">Todas as acoes</option>
+      {% for acao in acoes_disponiveis %}
+        <option value="{{ acao }}" {% if filtros.acao == acao %}selected{% endif %}>{{ formatar_acao(acao) }}</option>
+      {% endfor %}
+    </select>
+
+      <select name="tipo_evento">
+        <option value="">Todos os tipos</option>
+        <option value="alerta" {% if filtros.tipo_evento == 'alerta' %}selected{% endif %}>Alerta</option>
+        <option value="falha" {% if filtros.tipo_evento == 'falha' %}selected{% endif %}>Falha</option>
+        <option value="operacao" {% if filtros.tipo_evento == 'operacao' %}selected{% endif %}>Operacao</option>
+      </select>
+
+      <label class="check-inline">
+          <input type="checkbox" name="somente_bloqueados" value="1" {% if filtros.somente_bloqueados %}checked{% endif %}>
+          Somente IPs bloqueados agora
+      </label>
+    <select name="ip_bloqueado">
+        <option value="">IP Bloqueado (todos)</option>
+        {% for ip in ips_bloqueados_ativos %}
+        <option value="{{ ip }}" {% if filtros.ip_bloqueado == ip %}selected{% endif %}>{{ ip }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="status">
+      <option value="">Todos os status</option>
+      <option value="sucesso" {% if filtros.status == 'sucesso' %}selected{% endif %}>Sucesso</option>
+      <option value="falha" {% if filtros.status == 'falha' %}selected{% endif %}>Falha</option>
+    </select>
+
+    <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}">
+
+    <input type="date" name="data_fim" value="{{ filtros.data_fim }}">
+
+    <select name="per_page">
+      <option value="25" {% if per_page == 25 %}selected{% endif %}>25 por pagina</option>
+      <option value="50" {% if per_page == 50 %}selected{% endif %}>50 por pagina</option>
+      <option value="100" {% if per_page == 100 %}selected{% endif %}>100 por pagina</option>
+      <option value="200" {% if per_page == 200 %}selected{% endif %}>200 por pagina</option>
+    </select>
+
+    <div class="filtro-actions">
+      <button type="submit" class="btn">Aplicar filtros</button>
+      <a class="btn clear" href="{{ url_for('ouvidoria.logs_ouvidoria') }}">Limpar</a>
+    </div>
+
+  </form>
+
+    {% if filtros_ativos %}
+    <div class="filtros-ativos">
+        <strong>Filtros Ativos</strong>
+        <div class="chips">
+            {% for item in filtros_ativos %}
+            <span class="chip">{{ item }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+  <div class="helper">Legenda: alerta = evento critico, falha = tentativa sem sucesso, operacao = acao normal do sistema.</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">ID</th>
+        <th>Data/Hora</th>
+        <th class="tipo-col">Tipo</th>
+        <th>Usuario</th>
+        <th>O que aconteceu</th>
+        <th class="status-col">Status</th>
+        <th class="origem-col">Origem</th>
+        <th class="acoes-col">Acoes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      {% set evento = tipo_evento(log) %}
+      <tr>
+        <td>{{ log.id }}</td>
+        <td>{{ formatar_datahora_local(log.criado_em) }}</td>
+        <td>
+          {% if evento == 'alerta' %}
+            <span class="badge badge-alerta">Alerta</span>
+          {% elif evento == 'falha' %}
+            <span class="badge badge-falha">Falha</span>
+          {% else %}
+            <span class="badge badge-operacao">Operacao</span>
+          {% endif %}
+        </td>
+        <td>{{ log.usuario_login or '-' }}</td>
+        <td>
+          <div class="acao" title="{{ log.acao or '' }}">{{ formatar_acao(log.acao) }}</div>
+          <div class="resumo">{{ resumo_curto_detalhes(log.detalhes) }}</div>
+        </td>
+        <td>
+          <span class="status-pill {{ 'status-sucesso' if log.status == 'sucesso' else ('status-falha' if log.status == 'falha' else 'status-outro') }}">
+            {{ log.status or '-' }}
+          </span>
+        </td>
+        <td>
+          <div>{{ (log.recurso or '-') }}{% if log.recurso_id %} #{{ log.recurso_id }}{% endif %}</div>
+          <div>{{ log.ip_origem or '-' }}</div>
+          <div class="rota" title="{{ log.rota or '' }}">{{ log.rota or '-' }}</div>
+        </td>
+        <td><a class="btn-small" href="{{ url_for('ouvidoria.detalhe_log_ouvidoria', log_id=log.id, retorno=retorno) }}">Ver detalhes</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty">Nenhum log encontrado para os filtros informados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="paginacao">
+    {% if page > 1 %}<a class="btn gray" href="{{ url_for('ouvidoria.logs_ouvidoria', page=page-1, per_page=per_page, **filtros) }}">Anterior</a>{% endif %}
+    <span>Pagina {{ page }} de {{ total_pages }} | {{ per_page }} por pagina</span>
+    {% if page < total_pages %}<a class="btn gray" href="{{ url_for('ouvidoria.logs_ouvidoria', page=page+1, per_page=per_page, **filtros) }}">Proxima</a>{% endif %}
+  </div>
+</div>
+</body>
+</html>

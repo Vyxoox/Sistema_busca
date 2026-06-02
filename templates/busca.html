@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Busca de Funcionários</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0px; background-color: #f8f9fa; color: #333; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+
+        .search-section { background: #f1f3f5; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .search-form { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type=text] { flex-grow: 1; padding: 12px; font-size: 16px; border: 1px solid #ced4da; border-radius: 6px; }
+        .btn-primary { padding: 10px 25px; font-size: 16px; background: #5c80bc; color: white; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #6c757d; color: white; border: none; border-radius: 4px; transition: background 0.2s; }
+        .btn-secondary:hover { background: #5a6268; }
+
+        .filter-section { border-top: 1px solid #dee2e6; padding-top: 20px; }
+        .filter-title { font-weight: 600; margin-bottom: 15px; color: #495057; display: flex; align-items: center; gap: 8px; }
+        .checkbox-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+        .checkbox-item input { cursor: pointer; width: 16px; height: 16px; }
+
+        .resultados-container { margin-top: 30px; }
+        .resultado-card { background: #fff; border: 1px solid #e9ecef; padding: 20px; border-radius: 8px; margin-bottom: 15px; transition: transform 0.2s, box-shadow 0.2s; }
+        .resultado-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .resultado-header { border-bottom: 1px solid #f1f3f5; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .nome-funcionario { font-size: 1.25rem; font-weight: 700; color: #5c80bc; }
+        .nome-funcionario a { color: inherit; text-decoration: none; }
+        .nome-funcionario a:hover { text-decoration: underline; }
+
+        .badge-vinculo { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+        .badge-servidor { background: #e7f3ff; color: #5c80bc; }
+        .badge-terceirizado { background: #fff4e6; color: #fd7e14; }
+
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+        .info-item { font-size: 0.9rem; line-height: 1.4; }
+        .info-label { font-weight: 600; color: #6c757d; display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-value { color: #212529; }
+
+        .no-results { text-align: center; padding: 40px; color: #6c757d; }
+        .footer { margin-top: 40px; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }
+        .footer a { color: #5c80bc; text-decoration: none; font-weight: 500; }
+        .footer a:hover { text-decoration: underline; }
+
+        .paginacao { margin-top: 20px; display: flex; gap: 10px; justify-content: center; align-items: center; }
+        .paginacao a { display: inline-block; padding: 6px 12px; font-size: 0.85rem; text-decoration: none; }
+        .paginacao .pagina-info { font-size: 0.9rem; color: #495057; }
+
+        @media (max-width: 600px) {
+            .checkbox-group { grid-template-columns: 1fr 1fr; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+
+        header {
+            background-color: #e7e247;
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 10px 20px;
+        }
+
+        .TituloHeader { text-align: center; }
+
+        .titulo {
+            color: rgb(0, 16, 50);
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .subtitulo {
+            color: rgb(0, 16, 50);
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<header>
+    <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+    <div class="TituloHeader">
+        <div class="titulo">Departamento de Estradas e Rodagem</div>
+        <div class="subtitulo">Relatório de Funcionários</div>
+    </div>
+    <div></div>
+</header>
+
+<body>
+    <div class="container">
+        <h1>🔍 Sistema de Busca de Funcionários</h1>
+
+        <div style="text-align: right; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 10px;">
+                {% if vinculo_selecionado == 'todos' or not vinculo_selecionado %}
+                    <a href="{{ url_for('busca.index', q=query, vinculo='todos') }}" class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem; text-decoration: none; background: #5C80BC;">Todos</a>
+                {% else %}
+                    <a href="{{ url_for('busca.index', q=query, vinculo='todos') }}" class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem; text-decoration: none; background: #6c757d;">Todos</a>
+                {% endif %}
+
+                {% if vinculo_selecionado == 'servidor' %}
+                    <a href="{{ url_for('busca.index', q=query, vinculo='servidor') }}" class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem; text-decoration: none; background: #5C80BC;">Servidores</a>
+                {% else %}
+                    <a href="{{ url_for('busca.index', q=query, vinculo='servidor') }}" class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem; text-decoration: none; background: #6c757d;">Servidores</a>
+                {% endif %}
+
+                {% if vinculo_selecionado == 'terceirizado' %}
+                    <a href="{{ url_for('busca.index', q=query, vinculo='terceirizado') }}" class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem; text-decoration: none; background: #5C80BC;">Terceirizados</a>
+                {% else %}
+                    <a href="{{ url_for('busca.index', q=query, vinculo='terceirizado') }}" class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem; text-decoration: none; background: #6c757d;">Terceirizados</a>
+                {% endif %}
+            </div>
+
+            {% if current_user.is_authenticated %}
+                <div>
+                    <span style="font-size: 0.9rem; color: #666;">Olá, <strong>{{ current_user.login }}</strong></span>
+                    <a href="{{ url_for('painel') }}" style="margin-left: 10px; font-size: 0.9rem; color: #5C80BC; text-decoration: none;">Painel Administrativo</a>
+                    <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline; margin-left: 10px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" style="font-size: 0.9rem; color: #BF1A2F; text-decoration: none; background: none; border: none; cursor: pointer; padding: 0;">Sair</button>
+                    </form>
+                </div>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" style="font-size: 0.9rem; color: #5C80BC; text-decoration: none;">Entrar no Sistema</a>
+            {% endif %}
+        </div>
+
+        <div class="search-section">
+            <form method="get" action="{{ url_for('busca.index') }}">
+                <input type="hidden" name="vinculo" value="{{ vinculo_selecionado or 'todos' }}">
+                <div class="search-form">
+                    <input type="text" name="q" placeholder="Digite nome, cargo, lotação, área, CPF..." value="{{ query }}">
+                    <button type="submit" class="btn-primary">Buscar</button>
+                </div>
+            </form>
+
+            <form method="post" action="{{ url_for('columns.set_cols_prefs') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="q" value="{{ query }}">
+                <input type="hidden" name="vinculo" value="{{ vinculo_selecionado or 'todos' }}">
+
+                <div class="filter-section">
+                    <div class="filter-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        Informações para exibir:
+                    </div>
+
+                    <div class="checkbox-group">
+                        {% set campos = [
+                            ('matricula', 'MATRÍCULA'),
+                            ('cpf', 'CPF'),
+                            ('rg', 'RG'),
+                            ('cin', 'CIN'),
+                            ('titulo_eleitor', 'TÍTULO DE ELEITOR'),
+                            ('pis_pasep', 'PIS/PASEP'),
+                            ('data_nasc', 'DATA DE NASCIMENTO'),
+                            ('endereco_residencial', 'ENDEREÇO RESIDENCIAL'),
+                            ('telefone_pessoal', 'TELEFONE PESSOAL'),
+                            ('email_pessoal', 'EMAIL PESSOAL'),
+                            ('email_institucional', 'EMAIL INSTITUCIONAL'),
+                            ('ramal', 'RAMAL'),
+                            ('tipo', 'TIPO'),
+                            ('subtipo_vinculo', 'SUBTIPO VÍNCULO'),
+                            ('forma_ingresso', 'FORMA DE INGRESSO'),
+                            ('prontuario_funcional', 'PRONTUÁRIO FUNCIONAL'),
+                            ('cargo_exercicio', 'CARGO EM EXERCÍCIO'),
+                            ('cargo_origem', 'CARGO DE ORIGEM'),
+                            ('lotacao', 'LOTAÇÃO'),
+                            ('area', 'ÁREA'),
+                            ('coordenadoria', 'COORDENADORIA'),
+                            ('data_ingresso_der', 'DATA DE INGRESSO NO DER'),
+                            ('data_inicio', 'DATA DE INÍCIO'),
+                            ('data_admissao', 'DATA DE ADMISSÃO'),
+                            ('situacao', 'SITUAÇÃO'),
+                            ('data_desligamento', 'DATA DE DESLIGAMENTO'),
+                            ('doe_portaria', 'DOE / PORTARIA'),
+                            ('empresa_contratada', 'EMPRESA CONTRATADA'),
+                            ('numero_contrato', 'NÚMERO DO CONTRATO'),
+                            ('gestor_contrato', 'GESTOR DO CONTRATO'),
+                            ('fiscal_tecnico', 'FISCAL TÉCNICO'),
+                            ('fiscal_administrativo', 'FISCAL ADMINISTRATIVO'),
+                            ('preposto', 'PREPOSTO')
+                        ] %}
+
+                        {% for valor, label in campos %}
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="cols" value="{{ valor }}" {% if (not busca_realizada) or valor in colunas_selecionadas %}checked{% endif %}>
+                            {{ label }}
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button type="button" onclick="marcarTodos(true)" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8rem; cursor: pointer;">Marcar Todos</button>
+                        <button type="button" onclick="marcarTodos(false)" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8rem; cursor: pointer;">Desmarcar Todos</button>
+                        <button type="submit" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8rem; cursor: pointer;">Aplicar</button>
+                    </div>
+
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: #6c757d;">
+                        * O nome e o vínculo são sempre exibidos.
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <script>
+            function marcarTodos(status) {
+                const checkboxes = document.querySelectorAll('input[name="cols"]');
+                checkboxes.forEach(cb => cb.checked = status);
+            }
+        </script>
+
+        {% if busca_realizada %}
+            <div class="resultados-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <h2 style="margin: 0;">
+                        {% if query %}Resultados para "{{ query }}"{% else %}Todos os Funcionários{% endif %} ({{ total_resultados }})
+                    </h2>
+                    <a href="{{ url_for('planilha.exportar_xlsx', q=query, vinculo=vinculo_selecionado) }}" class="btn-secondary" style="margin-bottom:10px; padding: 6px 12px; font-size: 0.85rem; text-decoration: none;">Exportar Relatório Excel</a>
+                </div>
+
+                {% if resultados %}
+                    {% for r in resultados %}
+                        <div class="resultado-card">
+                            <div class="resultado-header">
+                                <div class="nome-funcionario">
+                                    <a href="{{ url_for('verfunc.ver_funcionario', funcionario_id=r.id) }}" target="_blank">
+                                        {{ r.nome_completo }}
+                                    </a>
+                                </div>
+
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    {% if current_user.is_authenticated and current_user.is_admin and r.id %}
+                                        <a href="{{ url_for('editfunc.editar_funcionario', id=r.id) }}" title="Editar" style="text-decoration: none; font-size: 1.1rem;">✏️</a>
+                                    {% endif %}
+                                    <div class="badge-vinculo {% if r.vinculo == 'SERVIDOR' %}badge-servidor{% else %}badge-terceirizado{% endif %}">
+                                        {{ r.vinculo }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-grid">
+                                {% for valor, label in campos %}
+                                    {% if ((not busca_realizada and not colunas_selecionadas) or valor in colunas_selecionadas) and r[valor] %}
+                                        <div class="info-item">
+                                            <span class="info-label">{{ label }}</span>
+                                            <span class="info-value">
+                                                {% if valor == 'cpf' %}
+                                                    {{ r[valor] | formato_cpf }}
+                                                {% elif valor == 'rg' %}
+                                                    {{ r[valor] | formato_rg }}
+                                                {% elif r[valor] is string %}
+                                                    {{ r[valor] }}
+                                                {% elif r[valor].strftime %}
+                                                    {{ r[valor].strftime('%d/%m/%Y') }}
+                                                {% else %}
+                                                    {{ r[valor] }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-results">
+                        <p>Nenhum funcionário encontrado para o termo buscado.</p>
+                    </div>
+                {% endif %}
+
+                {% if total_pages > 1 %}
+                    <div class="paginacao">
+                        {% if page > 1 %}
+                            <a href="{{ url_for('busca.index', q=query, vinculo=vinculo_selecionado, page=page-1) }}" class="btn-secondary">Anterior</a>
+                        {% endif %}
+                        <span class="pagina-info">Página {{ page }} de {{ total_pages }}</span>
+                        {% if page < total_pages %}
+                            <a href="{{ url_for('busca.index', q=query, vinculo=vinculo_selecionado, page=page+1) }}" class="btn-secondary">Próxima</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="footer">
+            <a href="{{ url_for('auth.login') }}">Área Administrativa</a>
+            <footer>
+                <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+                <p>Conteúdo Restrito e Sigiloso – Protegido pela LGPD</p>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

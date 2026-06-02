@@ -1,0 +1,24 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment and local IDE data
+.env
+.idea/
+
+# Test/cache artifacts
+.pytest_cache/
+
+# Local runtime data
+instance/*.db
+instance/*.db.*
+indice_funcionarios/
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db

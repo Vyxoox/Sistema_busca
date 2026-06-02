@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Administradores - DER</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        :root {
+            --bg: #f3f6fb;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --line: #dbe2ea;
+            --primary: #1f4b8f;
+            --primary-hover: #2d5da8;
+            --ok: #166534;
+            --ok-soft: #dcfce7;
+            --err: #b91c1c;
+            --err-soft: #fee2e2;
+            --neutral: #1e293b;
+            --neutral-soft: #e2e8f0;
+            --header-bg: #e7e247;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--header-bg);
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .TituloHeader { text-align: center; }
+        .titulo { color: #001032; font-size: 32px; font-weight: bold; }
+        .subtitulo { color: #001032; font-size: 24px; font-weight: bold; margin-top: 4px; }
+
+        .main-content {
+            flex: 1;
+            padding: 24px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--card);
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .top-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h1 { margin: 0; font-size: 28px; color: var(--neutral); }
+
+        .actions { display: flex; gap: 12px; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #fff;
+            background: var(--primary);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary { background: #64748b; }
+        .btn-secondary:hover { background: #475569; }
+
+        /* Mensagens de Feedback */
+        .flash {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .flash.success { background: var(--ok-soft); color: var(--ok); border: 1px solid #bdf0cc; }
+        .flash.error { background: var(--err-soft); color: var(--err); border: 1px solid #fecaca; }
+        .flash.warning { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+
+        /* Tabela */
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th {
+            text-align: left;
+            padding: 14px 16px;
+            background: #f8fafc;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--line);
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        tr:hover { background-color: #f1f5f9; }
+
+        .badge {
+            display: inline-flex;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .badge-super { background: #fef3c7; color: #b45309; }
+        .badge-admin { background: #dbeafe; color: #1e40af; }
+
+        .action-cell { display: flex; gap: 8px; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 0;
+            color: var(--muted);
+        }
+
+        footer {
+            background: #fff;
+            margin-top: auto;
+            text-align: center;
+            border-top: 1px solid var(--line);
+            padding: 24px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        footer p { margin: 4px 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+        <div class="TituloHeader">
+            <div class="titulo">Departamento de Estradas e Rodagem</div>
+            <div class="subtitulo">Relatório de Funcionários</div>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <div class="container">
+            <div class="top-section">
+                <h1>Gerenciamento de Administradores</h1>
+                <div class="actions">
+                    <a class="btn" href="{{ url_for('usuarios.criar_admin') }}">Novo Administrador</a>
+                    <a class="btn btn-secondary" href="{{ url_for('painel') }}">Voltar ao Painel</a>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if usuarios %}
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Login</th>
+                                <th>Perfil de Acesso</th>
+                                <th>Nível</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in usuarios %}
+                                <tr>
+                                    <td style="font-weight: 600;">{{ u.login }}</td>
+                                    <td><code>{{ u.perfil }}</code></td>
+                                    <td>
+                                        {% if u.is_superadmin %}
+                                            <span class="badge badge-super">Superadmin</span>
+                                        {% else %}
+                                            <span class="badge badge-admin">Admin Comum</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="action-cell">
+                                        <a class="btn btn-sm" href="{{ url_for('usuarios.editar_acesso_admin', usuario_id=u.id) }}">Editar acesso</a>
+                                        <a class="btn btn-secondary btn-sm" href="{{ url_for('usuarios.resetar_senha_admin', usuario_id=u.id) }}">Resetar senha</a>
+                                        <form action="{{ url_for('usuarios.excluir_admin', usuario_id=u.id) }}" method="POST"
+                                                style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este administrador? Esta ação não pode ser desfeita.');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm" style="background-color: var(--err);">Excluir</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Nenhum administrador cadastrado no sistema.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+        <p>Conteúdo Restrito e Sigiloso – Protegido pela LGPD</p>
+    </footer>
+</body>
+</html>

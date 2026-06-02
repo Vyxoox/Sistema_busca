@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <title>Ficha do Funcionário</title>
+    <meta charset="UTF-8">
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            background-color: #f4f6f8;
+            color: #222;
+        }
+
+        header {
+            background-color: #e7e247;
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 10px 20px;
+        }
+
+        .TituloHeader {
+            text-align: center;
+        }
+
+        .titulo {
+            color: rgb(0, 16, 50);
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .subtitulo {
+            color: rgb(0, 16, 50);
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .pagina {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .ficha-box {
+            background: #ffffff;
+            border: 1px solid #d9d9d9;
+            border-radius: 14px;
+            box-shadow: 0 3px 14px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+        }
+
+        .header-ficha {
+            position: relative;
+            min-height: 180px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #ececec;
+            padding-bottom: 20px;
+        }
+
+        .nomefuncionario {
+            text-align: center;
+            font-size: 30px;
+            font-weight: bold;
+            color: #1f2937;
+            padding-top: 40px;
+        }
+
+        .fotofuncionario {
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+
+        .fotofuncionario img {
+            width: 160px;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 2px solid #cfcfcf;
+            background: #eee;
+        }
+
+        .badge-topo {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-servidor {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .badge-terceirizado {
+            background: #ffedd5;
+            color: #c2410c;
+        }
+
+        .badge-ativo {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-inativo {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .subtitulo-secao {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 28px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e3e3e3;
+            color: #1f3c88;
+        }
+
+        .infofuncionarios {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 20px;
+        }
+
+        .info-item {
+            background: #fafafa;
+            border: 1px solid #ececec;
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .info-label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 15px;
+            color: #222;
+            word-break: break-word;
+        }
+
+        .acoes {
+            margin-top: 30px;
+            text-align: center;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .botao {
+            display: inline-block;
+            text-decoration: none;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .botao-voltar {
+            background: #1f3c88;
+        }
+
+        .botao-voltar:hover {
+            background: #16306f;
+        }
+
+        .botao-editar {
+            background: #5c80bc;
+        }
+
+        .botao-editar:hover {
+            background: #486a9e;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .infofuncionarios {
+                grid-template-columns: 1fr;
+            }
+
+            .header-ficha {
+                min-height: auto;
+                text-align: center;
+                padding-top: 180px;
+            }
+
+            .fotofuncionario {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                right: auto;
+            }
+
+            .nomefuncionario {
+                padding-top: 0;
+            }
+
+            header {
+                grid-template-columns: 110px 1fr 40px;
+                height: auto;
+                padding: 12px;
+            }
+
+            .titulo {
+                font-size: 24px;
+            }
+
+            .subtitulo {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+    <div class="TituloHeader">
+        <div class="titulo">Departamento de Estradas e Rodagem</div>
+        <div class="subtitulo">Relatório de Funcionários</div>
+    </div>
+    <div></div>
+</header>
+
+<div class="pagina">
+    {% set foto_funcionario = url_for('static', filename='fotos_funcionarios/' ~ (funcionario.id | string) ~ '.jpg') %}
+    {% set foto_padrao = url_for('static', filename='img/sem_foto.jpg') %}
+
+    <div class="ficha-box">
+        <div class="header-ficha">
+            <div class="nomefuncionario">
+                {{ funcionario.nome_completo }}
+            </div>
+
+            <div class="badge-topo">
+                <span class="badge {% if funcionario.vinculo == 'SERVIDOR' %}badge-servidor{% else %}badge-terceirizado{% endif %}">
+                    {{ funcionario.vinculo }}
+                </span>
+
+                <span class="badge {% if funcionario.ativo %}badge-ativo{% else %}badge-inativo{% endif %}">
+                    {{ funcionario.situacao if funcionario.situacao else ('Ativo' if funcionario.ativo else 'Inativo') }}
+                </span>
+            </div>
+
+            <div class="fotofuncionario">
+                <img src="{{ foto_funcionario }}"
+                     alt="Foto do Funcionário"
+                     onerror="this.onerror=null;this.src='{{ foto_padrao }}';">
+            </div>
+        </div>
+
+        <div class="subtitulo-secao">Identificação</div>
+        <div class="infofuncionarios">
+            <div class="info-item">
+                <span class="info-label">CPF</span>
+                <span class="info-value">{{ funcionario.cpf | formato_cpf }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">RG</span>
+                <span class="info-value">{{ funcionario.rg | formato_rg if funcionario.rg else '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">CIN</span>
+                <span class="info-value">{{ funcionario.cin or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Título de Eleitor</span>
+                <span class="info-value">{{ funcionario.titulo_eleitor or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">PIS/PASEP</span>
+                <span class="info-value">{{ funcionario.pis_pasep or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Data de Nascimento</span>
+                <span class="info-value">{{ funcionario.data_nasc.strftime('%d/%m/%Y') if funcionario.data_nasc else '-' }}</span>
+            </div>
+        </div>
+
+        <div class="subtitulo-secao">Contato</div>
+        <div class="infofuncionarios">
+            <div class="info-item">
+                <span class="info-label">Endereço Residencial</span>
+                <span class="info-value">{{ funcionario.endereco_residencial or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Telefone Pessoal</span>
+                <span class="info-value">{{ funcionario.telefone_pessoal or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Email Pessoal</span>
+                <span class="info-value">{{ funcionario.email_pessoal or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Email Institucional</span>
+                <span class="info-value">{{ funcionario.email_institucional or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Ramal</span>
+                <span class="info-value">{{ funcionario.ramal or '-' }}</span>
+            </div>
+        </div>
+
+        <div class="subtitulo-secao">Dados Funcionais</div>
+        <div class="infofuncionarios">
+            <div class="info-item">
+                <span class="info-label">Tipo</span>
+                <span class="info-value">{{ funcionario.tipo or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Subtipo de Vínculo</span>
+                <span class="info-value">{{ funcionario.subtipo_vinculo or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Forma de Ingresso</span>
+                <span class="info-value">{{ funcionario.forma_ingresso or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Prontuário Funcional</span>
+                <span class="info-value">{{ funcionario.prontuario_funcional or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Matrícula</span>
+                <span class="info-value">{{ funcionario.matricula or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Cargo em Exercício</span>
+                <span class="info-value">{{ funcionario.cargo_exercicio or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Cargo de Origem</span>
+                <span class="info-value">{{ funcionario.cargo_origem or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Lotação</span>
+                <span class="info-value">{{ funcionario.lotacao or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Área</span>
+                <span class="info-value">{{ funcionario.area or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Coordenadoria</span>
+                <span class="info-value">{{ funcionario.coordenadoria or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">DOE / Portaria</span>
+                <span class="info-value">{{ funcionario.doe_portaria or '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Situação</span>
+                <span class="info-value">{{ funcionario.situacao or '-' }}</span>
+            </div>
+        </div>
+
+        <div class="subtitulo-secao">Datas</div>
+        <div class="infofuncionarios">
+            <div class="info-item">
+                <span class="info-label">Data de Ingresso no DER</span>
+                <span class="info-value">{{ funcionario.data_ingresso_der.strftime('%d/%m/%Y') if funcionario.data_ingresso_der else '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Data de Início</span>
+                <span class="info-value">{{ funcionario.data_inicio.strftime('%d/%m/%Y') if funcionario.data_inicio else '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Data de Admissão</span>
+                <span class="info-value">{{ funcionario.data_admissao.strftime('%d/%m/%Y') if funcionario.data_admissao else '-' }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Data de Desligamento</span>
+                <span class="info-value">{{ funcionario.data_desligamento.strftime('%d/%m/%Y') if funcionario.data_desligamento else '-' }}</span>
+            </div>
+        </div>
+
+        {% if funcionario.vinculo == 'TERCEIRIZADO' %}
+            <div class="subtitulo-secao">Dados Contratuais</div>
+            <div class="infofuncionarios">
+                <div class="info-item">
+                    <span class="info-label">Empresa Contratada</span>
+                    <span class="info-value">{{ funcionario.empresa_contratada or '-' }}</span>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">Número do Contrato</span>
+                    <span class="info-value">{{ funcionario.numero_contrato or '-' }}</span>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">Gestor do Contrato</span>
+                    <span class="info-value">{{ funcionario.gestor_contrato or '-' }}</span>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">Fiscal Técnico</span>
+                    <span class="info-value">{{ funcionario.fiscal_tecnico or '-' }}</span>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">Fiscal Administrativo</span>
+                    <span class="info-value">{{ funcionario.fiscal_administrativo or '-' }}</span>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">Preposto</span>
+                    <span class="info-value">{{ funcionario.preposto or '-' }}</span>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="acoes">
+            <a class="botao botao-voltar" href="{{ url_for('busca.index') }}">Voltar</a>
+            {% if current_user.is_authenticated and current_user.is_admin %}
+                <a class="botao botao-editar" href="{{ url_for('editfunc.editar_funcionario', id=funcionario.id) }}">Editar</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+    <footer>
+        <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+        <p>Conteúdo Restrito e Sigiloso – Protegido pela LGPD</p>
+    </footer>
+
+</body>
+</html>
