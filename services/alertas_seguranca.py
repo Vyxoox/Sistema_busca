@@ -10,7 +10,6 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 from flask import current_app, has_request_context, request
-from sqlalchemy import true
 
 from core.extensions import db
 from models import LogAuditoria, Usuario
@@ -45,60 +44,34 @@ def _agora_utc_sem_tz() -> datetime:
 
 
 def _carregar_config() -> dict[str, Any]:
-    acoes_superadmin_padrao = (
-        'OUVIDORIA_EXPORTAR_CSV,REINDEXAR_TODOS_SUCESSO,USUARIO_CRIAR_ADMIN_SUCESSO,'
-        'FUNCIONARIO_INATIVAR_SUCESSO,FUNCIONARIO_REATIVAR_SUCESSO,FUNCIONARIO_EDITAR_SUCESSO,'
-        'FUNCIONARIO_CADASTRAR_SERVIDOR_SUCESSO,FUNCIONARIO_CADASTRAR_TERCEIRIZADO_SUCESSO'
-    )
-    acoes_superadmin_raw = os.getenv('ALERTA_SUPERADMIN_ACOES', acoes_superadmin_padrao)
-    acoes_superadmin = {
-        item.strip().upper()
-        for item in acoes_superadmin_raw.split(',')
-        if item.strip()
-    }
-
-    producao = _ambiente_producao()
-
-    login_bloqueio_habilitado = _env_bool_opcional('ALERTA_LOGIN_BLOQUEIO_HABILITADO')
-    if login_bloqueio_habilitado is None:
-        login_bloqueio_habilitado = True
-
-    login_bloquear_localhost = _env_bool_opcional('ALERTA_LOGIN_BLOQUEAR_LOCALHOST')
-    if login_bloquear_localhost is None:
-        login_bloquear_localhost = producao
-
     return {
-        'habilitado': _env_bool('ALERTAS_HABILITADOS', True),
-        'fuso': os.getenv('ALERTA_FUSO_HORARIO', 'America/Sao_Paulo').strip() or 'America/Sao_Paulo',
-        'login_limite': _env_int('ALERTA_LOGIN_FALHAS_LIMITE', 5, 1, 1000),
-        'login_janela_min': _env_int('ALERTA_LOGIN_FALHAS_JANELA_MIN', 5, 1, 1440),
-        'login_cooldown_min': _env_int('ALERTA_LOGIN_FALHAS_COOLDOWN_MIN', 15, 1, 1440),
-        'login_bloqueio_habilitado': login_bloqueio_habilitado,
-        'login_bloquear_localhost': login_bloquear_localhost,
-        'login_bloqueio_min': _env_int('ALERTA_LOGIN_BLOQUEIO_MIN', 15, 1, 1440),
-        'export_limite': _env_int('ALERTA_EXPORTACAO_LIMITE', 3, 1, 1000),
-        'export_janela_min': _env_int('ALERTA_EXPORTACAO_JANELA_MIN', 10, 1, 1440),
-        'export_cooldown_min': _env_int('ALERTA_EXPORTACAO_COOLDOWN_MIN', 20, 1, 1440),
-        'superadmin_hora_inicio': _env_int('ALERTA_SUPERADMIN_HORA_INICIO', 8, 0, 23),
-        'superadmin_hora_fim': _env_int('ALERTA_SUPERADMIN_HORA_FIM', 18, 0, 23),
-        'superadmin_cooldown_min': _env_int('ALERTA_SUPERADMIN_COOLDOWN_MIN', 30, 1, 1440),
-        'superadmin_acoes': acoes_superadmin,
-        'email_habilitado': _env_bool('ALERTA_EMAIL_HABILITADO', False),
-        'email_smtp_host': os.getenv('ALERTA_EMAIL_SMTP_HOST', '').strip(),
-        'email_smtp_port': _env_int('ALERTA_EMAIL_SMTP_PORT', 587, 1, 65535),
-        'email_smtp_usuario': os.getenv('ALERTA_EMAIL_SMTP_USUARIO', '').strip(),
-        'email_smtp_senha': os.getenv('ALERTA_EMAIL_SMTP_SENHA', ''),
-        'email_remetente': os.getenv('ALERTA_EMAIL_REMETENTE', '').strip(),
-        'email_destinatarios': [
-            item.strip()
-            for item in os.getenv('ALERTA_EMAIL_DESTINATARIOS', '').split(',')
-            if item.strip()
-        ],
-        'email_usar_tls': _env_bool('ALERTA_EMAIL_USAR_TLS', True),
-        'email_usar_ssl': _env_bool('ALERTA_EMAIL_USAR_SSL', False),
-        'webhook_habilitado': _env_bool('ALERTA_WEBHOOK_HABILITADO', False),
-        'webhook_url': os.getenv('ALERTA_WEBHOOK_URL', '').strip(),
-        'webhook_timeout_sec': _env_int('ALERTA_WEBHOOK_TIMEOUT_SEC', 5, 1, 120),
+        'habilitado': current_app.config.get('ALERTAS_HABILITADOS', True),
+        'fuso': current_app.config.get('ALERTA_FUSO_HORARIO', 'America/Sao_Paulo'),
+        'login_limite': current_app.config.get('ALERTA_LOGIN_FALHAS_LIMITE', 5),
+        'login_janela_min': current_app.config.get('ALERTA_LOGIN_FALHAS_JANELA_MIN', 5),
+        'login_cooldown_min': current_app.config.get('ALERTA_LOGIN_FALHAS_COOLDOWN_MIN', 15),
+        'login_bloqueio_habilitado': current_app.config.get('ALERTA_LOGIN_BLOQUEIO_HABILITADO', True),
+        'login_bloquear_localhost': current_app.config.get('ALERTA_LOGIN_BLOQUEAR_LOCALHOST', False),
+        'login_bloqueio_min': current_app.config.get('ALERTA_LOGIN_BLOQUEIO_MIN', 15),
+        'export_limite': current_app.config.get('ALERTA_EXPORTACAO_LIMITE', 3),
+        'export_janela_min': current_app.config.get('ALERTA_EXPORTACAO_JANELA_MIN', 10),
+        'export_cooldown_min': current_app.config.get('ALERTA_EXPORTACAO_COOLDOWN_MIN', 20),
+        'superadmin_hora_inicio': current_app.config.get('ALERTA_SUPERADMIN_HORA_INICIO', 8),
+        'superadmin_hora_fim': current_app.config.get('ALERTA_SUPERADMIN_HORA_FIM', 18),
+        'superadmin_cooldown_min': current_app.config.get('ALERTA_SUPERADMIN_COOLDOWN_MIN', 30),
+        'superadmin_acoes': current_app.config.get('ALERTA_SUPERADMIN_ACOES', set()),
+        'email_habilitado': current_app.config.get('ALERTA_EMAIL_HABILITADO', False),
+        'email_smtp_host': current_app.config.get('ALERTA_EMAIL_SMTP_HOST', ''),
+        'email_smtp_port': current_app.config.get('ALERTA_EMAIL_SMTP_PORT', 587),
+        'email_smtp_usuario': current_app.config.get('ALERTA_EMAIL_SMTP_USUARIO', ''),
+        'email_smtp_senha': current_app.config.get('ALERTA_EMAIL_SMTP_SENHA', ''),
+        'email_remetente': current_app.config.get('ALERTA_EMAIL_REMETENTE', ''),
+        'email_destinatarios': current_app.config.get('ALERTA_EMAIL_DESTINATARIOS', []),
+        'email_usar_tls': current_app.config.get('ALERTA_EMAIL_USAR_TLS', True),
+        'email_usar_ssl': current_app.config.get('ALERTA_EMAIL_USAR_SSL', False),
+        'webhook_habilitado': current_app.config.get('ALERTA_WEBHOOK_HABILITADO', False),
+        'webhook_url': current_app.config.get('ALERTA_WEBHOOK_URL', ''),
+        'webhook_timeout_sec': current_app.config.get('ALERTA_WEBHOOK_TIMEOUT_SEC', 5),
     }
 
 
@@ -187,6 +160,11 @@ def obter_bloqueio_ip_login(ip: str | None) -> tuple[bool, datetime | None]:
         return False, None
     if evento.acao == 'SEC_DESBLOQUEIO_IP_LOGIN_MANUAL':
         return False, evento.criado_em
+
+    expiracao = _extrair_bloqueio_ate_utc(evento.detalhes)
+    if expiracao and expiracao < _agora_utc_sem_tz():
+        return False, None
+
     return True, evento.criado_em
 
 
@@ -305,7 +283,8 @@ def _registrar_bloqueio_ip_login(
     ip_origem: str,
     ocorrencias: int,
     config: dict[str, Any],
-) -> None:
+    bloqueio_minutos=None,
+    expiracao_utc=None) -> None:
     if not config['login_bloqueio_habilitado']:
         return
 
@@ -329,7 +308,9 @@ def _registrar_bloqueio_ip_login(
         detalhes={
             'ip_alvo': ip_norm,
             'regra': 'bloqueio_temporario_por_brute_force',
-            'tipo_bloqueio': 'ate_desbloqueio_superadmin',
+            'tipo_bloqueio': 'temporario',
+            'bloqueio_ate_utc': expiracao_utc.isoformat(),
+            'bloqueio_minutos': bloqueio_minutos,
             'ocorrencias': ocorrencias,
             'limite': config['login_limite'],
             'janela_min': config['login_janela_min'],

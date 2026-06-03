@@ -1,4 +1,5 @@
 import json
+import re
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
@@ -10,10 +11,24 @@ from core.authz import superadmin_required
 from models import Usuario
 from services.auditoria_services import registrar_evento_seguro, gerar_diff_antes_depois
 from services.email_services import enviar_email
+from repositories.usuario_repository import UsuarioRepository
 
 usuario_bp = Blueprint('usuarios', __name__)
 PERFIS_ADMIN_VALIDOS = {"CA.9", "SA.9", "CGR.9", "CO.9", "CT.9"}
 PERMISSOES_ADMIN_VALIDAS ={"usuarios_gerenciar", "funcionarios_gerenciar", "ouvidoria_logs", "reindexar",}
+
+def validar_senha(password: str) ->tuple[bool, str]:
+    if len(password) < 8:
+        return False, 'A senha deve ter pelo menos 8 caracteres.'
+    if not re.search(r'[A-Z]', password):
+        return False, 'A senha deve conter ao menos uma letra maiúscula.'
+    if not re.search(r'[a-z]', password):
+        return False, 'A senha deve conter ao menos uma letra minúscula.'
+    if not re.search(r'[0-9]', password):
+        return False, 'A senha dev conter ao menos um número.'
+    if not re.search(r'[@$!%*?&#§=\-_+§\(\)\[\]\{\}]', password):
+        return False, 'A senha deve conter ao menos um caractere especial. (Ex:@#$%&*)'
+    return True, ''
 
 def _parse_permissoes(raw: str | None) -> list[str]:
     if not raw:
@@ -40,7 +55,7 @@ def _dump_permissoes(permissoes: list[str]) -> str | None:
 @superadmin_required
 @audit_event()
 def listar_admin():
-    usuarios = Usuario.query.filter_by(is_admin=True).order_by(Usuario.login.asc()).all()
+    usuarios = UsuarioRepository.listar_todos_admins()
     registrar_evento_seguro(
         'USUARIOS_LISTAR',
         categoria='administracao',
@@ -83,14 +98,16 @@ def criar_admin():
 
         if not login:
             errors['login'] = 'O nome de usuário é obrigatório.'
-        elif Usuario.query.filter_by(login=login).first():
+        elif UsuarioRepository.buscar_por_login(login):
             errors['login'] = 'Este login já está em uso.'
             registrar_falha_validacao('login_duplicado')
 
         if not password:
             errors['password'] = 'A senha é obrigatória.'
-        elif len(password) < 8:
-            errors['password'] = 'A senha deve ter pelo menos 8 caracteres.'
+        else:
+            senha_valida, msg_erro = validar_senha(password)
+            if not senha_valida:
+                errors['password'] = msg_erro
 
         if password != confirm_password:
             errors['confirm_password'] = 'As senhas não coincidem.'
@@ -114,10 +131,9 @@ def criar_admin():
             is_superadmin=False
         )
         usuario.set_password(password)
-        db.session.add(usuario)
+        UsuarioRepository.salvar(usuario)
 
         try:
-            db.session.commit()
             flash('Administrador criado com sucesso!', 'success')
             return redirect(url_for('usuarios.listar_admin'))
         except IntegrityError:
@@ -132,7 +148,8 @@ def criar_admin():
 @login_required
 @superadmin_required
 def resetar_senha_admin(usuario_id: int):
-    usuario_alvo = db.session.get(Usuario, usuario_id) or abort(404)
+
+    usuario_alvo = UsuarioRepository.buscar_por_id(usuario_id) or abort(404)
 
     def registrar_falha(motivo: str, *, erro: str | None = None) -> None:
         detalhes = {
@@ -159,9 +176,10 @@ def resetar_senha_admin(usuario_id: int):
             flash('Informe a nova senha.', 'error')
             return redirect(request.url)
 
-        if len(password) < 8:
-            registrar_falha('senha_curta')
-            flash('A senha deve ter pelo menos 8 caracteres.', 'error')
+        senha_valida, msg_erro = validar_senha(password)
+        if not senha_valida:
+            registrar_falha('Senha fraca')
+            flash(msg_erro, 'error')
             return redirect(request.url)
 
         if password != confirm_password:
@@ -194,7 +212,7 @@ def resetar_senha_admin(usuario_id: int):
 @login_required
 @superadmin_required
 def editar_acesso_admin(usuario_id: int):
-    usuario_alvo = db.session.get(Usuario, usuario_id) or abort(404)
+    usuario_alvo = UsuarioRepository.buscar_por_id(usuario_id) or abort(404)
     permissoes_atuais = _parse_permissoes(usuario_alvo.permissoes)
 
     # Impedir que um superadmin rebaixe a si mesmo ou mude seu próprio perfil acidentalmente
@@ -226,7 +244,7 @@ def editar_acesso_admin(usuario_id: int):
              # Nota: No sistema atual, is_superadmin é uma flag separada,
              # mas o perfil define o nível de acesso real em muitos lugares.
              # Se for rebaixar o perfil, precisamos garantir que ainda existam outros superadmins.
-             outros_super = Usuario.query.filter(Usuario.is_superadmin == True, Usuario.id != usuario_alvo.id).count()
+             outros_super = UsuarioRepository.contar_outros_superadmins(usuario_alvo.id)
              if outros_super == 0:
                  flash('Não é possível alterar o perfil do único Superadmin do sistema.', 'error')
                  return redirect(request.url)
@@ -312,7 +330,7 @@ def editar_acesso_admin(usuario_id: int):
 @superadmin_required
 @audit_event()
 def excluir_admin(usuario_id: int):
-    usuario_alvo = db.session.get(Usuario, usuario_id) or abort(404)
+    usuario_alvo = UsuarioRepository.buscar_por_id(usuario_id) or abort(404)
 
     # Impedir que o superadmin se exclua
     if usuario_alvo.id == current_user.id:
@@ -321,15 +339,14 @@ def excluir_admin(usuario_id: int):
 
     # Se o alvo for um superadmin, garantir que existam outros
     if usuario_alvo.is_superadmin:
-        outros_super = Usuario.query.filter(Usuario.is_superadmin == True, Usuario.id != usuario_alvo.id).count()
+        outros_super = UsuarioRepository.contar_outros_superadmins(usuario_alvo.id)
         if outros_super == 0:
             flash('Não é possível excluir o único Superadmin do sistema.', 'error')
             return redirect(url_for('usuarios.listar_admin'))
 
     login_alvo = usuario_alvo.login
     try:
-        db.session.delete(usuario_alvo)
-        db.session.commit()
+        UsuarioRepository.excluir(usuario_alvo)
 
         registrar_evento_seguro(
             'USUARIO_EXCLUIR_SUCESSO',

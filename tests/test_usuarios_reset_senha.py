@@ -83,8 +83,8 @@ class TestUsuariosResetSenha(unittest.TestCase):
             resp = self.client.post(
                 f"/usuarios/{self.alvo_id}/reset-senha",
                 data={
-                    "password": "NovaSenha123",
-                    "confirm_password": "Diferente123",
+                    "password": "NovaSenha123!",
+                    "confirm_password": "Diferente123!",
                 },
                 follow_redirects=False,
             )
@@ -106,8 +106,8 @@ class TestUsuariosResetSenha(unittest.TestCase):
             resp = self.client.post(
                 f"/usuarios/{self.alvo_id}/reset-senha",
                 data={
-                    "password": "NovaSenha123",
-                    "confirm_password": "NovaSenha123",
+                    "password": "NovaSenha123!",
+                    "confirm_password": "NovaSenha123!",
                 },
                 follow_redirects=False,
             )
@@ -115,7 +115,7 @@ class TestUsuariosResetSenha(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         alvo = db.session.get(Usuario, self.alvo_id)
-        self.assertTrue(alvo.check_password("NovaSenha123"))
+        self.assertTrue(alvo.check_password("NovaSenha123!"))
         self.assertFalse(alvo.check_password("SenhaInicial123"))
 
         self.assertEqual(audit_mock.call_count, 1)

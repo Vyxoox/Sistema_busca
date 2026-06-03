@@ -17,7 +17,7 @@ from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
-from core.extensions import db, login_manager, csrf, migrate
+from core.extensions import db, login_manager, csrf, migrate, limiter
 from models import Usuario, Funcionario
 from core.config import Config
 from core.schema import schema
@@ -46,6 +46,8 @@ db.init_app(app)
 
 login_manager.init_app(app)
 csrf.init_app(app)
+
+limiter.init_app(app)
 
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'É necessário fazer login para acessar esta página.'
@@ -227,7 +229,7 @@ def _deve_ignorar_auditoria_requisicao() -> bool:
         return True
     return False
 
-def tratar_nao_se_aplica(valor):
+def tratar_nao_se_aplica(valor: Any) -> str | None:
     if valor is None:
         return None
     s = str(valor).strip()
@@ -238,7 +240,7 @@ def tratar_nao_se_aplica(valor):
     return s
 
 
-def normalizar_ramal(valor):
+def normalizar_ramal(valor: Any) -> str:
     if valor is None:
         return ''
     s = re.sub(r'\D', '', str(valor))
@@ -248,7 +250,7 @@ def normalizar_ramal(valor):
         return s
     return '173218' + s
 
-def normalizar_titulo_simples(valor):
+def normalizar_titulo_simples(valor: Any) -> str:
     """Texto: primeira letra de cada palavra em maiúsculo (sem preservar siglas)."""
     if valor is None:
         return ''
@@ -335,7 +337,7 @@ def valor_exportacao_resultado(resultado, campo):
 
     return valor
 
-def limpar_valor_excel(val):
+def limpar_valor_excel(val: Any) -> Any:
     if val is None:
         return ''
 
@@ -354,7 +356,7 @@ def limpar_valor_excel(val):
     return val
 
 
-def parse_date(date_str):
+def parse_date(date_str: Any) -> date | None:
     if date_str:
         try:
             return datetime.strptime(str(date_str), '%Y-%m-%d').date()
@@ -363,7 +365,7 @@ def parse_date(date_str):
     return None
 
 
-def parse_excel_date(valor):
+def parse_excel_date(valor: Any) -> date | None:
     if valor is None or pd.isna(valor):
         return None
     try:
@@ -372,7 +374,7 @@ def parse_excel_date(valor):
         return None
 
 
-def date_to_datetime(val):
+def date_to_datetime(val: Any) -> datetime | None:
     if val is None:
         return None
     if isinstance(val, date):
@@ -423,6 +425,15 @@ def is_safe_url(target):
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+
+@app.after_request
+def adicionar_security_headers(response):
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline';"
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 @app.before_request

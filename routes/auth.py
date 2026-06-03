@@ -4,6 +4,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 
 from core.audit_policy import audit_event
+from core.extensions import limiter
+from repositories.usuario_repository import UsuarioRepository
 from models import Usuario
 from services.auditoria_services import registrar_evento_seguro
 from services.alertas_seguranca import ip_origem_requisicao, verificar_ip_bloqueado_login
@@ -20,6 +22,7 @@ def is_url_safe(target):
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 @audit_event()
 def login():
     if request.method == 'POST':
@@ -47,7 +50,8 @@ def login():
             )
             return render_template('login.html'), 429
 
-        user = Usuario.query.filter_by(login=login_value).first()
+        user : UsuarioRepository.buscar_por_login(login_value)
+
         if user and user.check_password(password):
             login_user(user)
             registrar_evento_seguro(
