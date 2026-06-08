@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% import 'macros.html' as ui %}
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -278,8 +279,11 @@
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip { display: inline-block; padding: 4px 8px; border-radius: 999px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1e3a8a; font-size: 12px; font-weight: 700; }
   </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css')}}">
 </head>
 <body>
+{{ ui.flash_messages() }}
 <div class="container">
   <div class="top">
     <div>
@@ -309,13 +313,7 @@
       </div>
   {% endif %}
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash {{ category if category in ['success', 'error'] else 'success' }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+
 
   <form method="get" action="{{ url_for('ouvidoria.logs_ouvidoria') }}" class="filtros">
     <input type="text" name="q" placeholder="Busca Geral" value="{{ filtros.q }}">
@@ -440,5 +438,6 @@
     {% if page < total_pages %}<a class="btn gray" href="{{ url_for('ouvidoria.logs_ouvidoria', page=page+1, per_page=per_page, **filtros) }}">Proxima</a>{% endif %}
   </div>
 </div>
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
 </body>
 </html>

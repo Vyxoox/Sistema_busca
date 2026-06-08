@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
+{% import 'macros.html' as ui %}
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -104,11 +105,31 @@
             color: #1f2937;
             font-size: 15px;
         }
-
+        /* Oculta o botão feio padrão do navegador */
         .foto-upload input[type="file"] {
-            display: block;
+            display: none;
+        }
+        /* Área de upload estilizada */
+        .custom-file-upload {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            background-color: #f3f4f6;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #475569;
+            transition: all 0.2s;
+            text-align: center;
             margin-bottom: 10px;
             font-size: 14px;
+        }
+        .custom-file-upload:hover {
+            background-color: #e2e8f0;
+            border-color: #94a3b8;
+            color: #1e293b;
         }
 
         .foto-upload small {
@@ -165,38 +186,47 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+
 </head>
+<body>
 <header>
     <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
     <div class="TituloHeader">
         <div class="titulo">Departamento de Estradas e Rodagem</div>
         <div class="subtitulo">Relatório de Funcionários</div>
     </div>
-    <div></div>
+
 </header>
-<body>
+{{ ui.flash_messages() }}
     <div class="container">
         <h1>Novo Servidor</h1>
-
         <form method="post" enctype="multipart/form-data">
-            <input type="hidden" name="vinculo" value="SERVIDOR">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="vinculo" value="SERVIDOR">
 
             <h2>Identificação</h2>
-            <div class="form-grid">
-                <div class="full-width">
-                    <label >NOME COMPLETO*</label>
-                    <input  placeholder="Teste da Silva" name="nome_completo" required type="text">
-                </div>
-
+            <div class="form-group">
+                <div class="form-grid">
+                    <div class="full-width">
+                        <label >NOME COMPLETO*</label>
+                        <input  placeholder="Teste da Silva" name="nome_completo" required type="text"
+                                class="{% if errors and 'nome_completo' in errors %}input-error{% endif %}">
+                            {{ ui.field_error('nome_completo', errors) }}
+                    </div>
+            </div>
                 <div class="full-width">
                     <h2>Foto</h2>
                     <div class="foto-section">
                         <div class="foto-upload">
-                            <label for="foto">Foto do Funcionário</label>
-                            <input type="file" name="foto" id="foto" accept="image/*" onchange="previewFoto(event)">
-                            <small>Selecione uma imagem JPG ou PNG.</small>
-                        </div>
+                                <label>Foto do Funcionário</label>
+                                <label for="foto" class="custom-file-upload">
+                                    📁 Selecionar Foto
+                                </label>
+                                <input type="file" name="foto" id="foto" accept="image/*" onchange="previewFoto(event)">
+                                <small id="nome-arquivo-selecionado">Nenhum arquivo selecionado. Selecione uma imagem JPG ou PNG.</small>
+                            </div>
 
                         <div class="foto-preview-box">
                             <label>Pré-visualização</label>
@@ -211,37 +241,44 @@
             <div class="form-grid">
                 <div>
                     <label>CPF*</label>
-                    <input placeholder="123.456.789-01" type="text" name="cpf" id="cpf" required oninput="mascaraCPF(this)">
+                    <input placeholder="123.456.789-01" type="text" name="cpf" id="cpf" required oninput="mascaraCPF(this)" class="{% if errors and 'cpf' in errors %}input-error{% endif %}">
+{{ ui.field_error('cpf', errors) }}
                 </div>
 
                 <div>
                     <label>RG</label>
-                    <input placeholder="12.345.678-9" type="text" name="rg" id="rg" oninput="mascaraRG(this)">
+                    <input placeholder="12.345.678-9" type="text" name="rg" id="rg" oninput="mascaraRG(this)" class="{% if errors and 'rg' in errors %}input-error{% endif %}">
+{{ ui.field_error('rg', errors) }}
                 </div>
 
                 <div>
                     <label>CIN</label>
-                    <input placeholder="123.456.789-01" type="text" name="cin">
+                    <input placeholder="123.456.789-01" type="text" name="cin" class="{% if errors and 'cin' in errors %}input-error{% endif %}">
+{{ ui.field_error('cin', errors) }}
                 </div>
 
                 <div>
                     <label>TÍTULO DE ELEITOR</label>
-                    <input placeholder="1234 5678 9012" type="text" name="titulo_eleitor">
+                    <input placeholder="1234 5678 9012" type="text" name="titulo_eleitor" class="{% if errors and 'titulo_eleitor' in errors %}input-error{% endif %}">
+{{ ui.field_error('titulo_eleitor', errors) }}
                 </div>
 
                 <div>
                     <label>PIS/PASEP*</label>
-                    <input placeholder="123.45678.90-1" type="text" name="pis_pasep" required>
+                    <input placeholder="123.45678.90-1" type="text" name="pis_pasep" required class="{% if errors and 'pis_pasep' in errors %}input-error{% endif %}">
+{{ ui.field_error('pis_pasep', errors) }}
                 </div>
 
                 <div>
                     <label>MATRÍCULA*</label>
-                    <input placeholder="2026001" type="text" name="matricula" required>
+                    <input placeholder="2026001" type="text" name="matricula" required class="{% if errors and 'matricula' in errors %}input-error{% endif %}">
+{{ ui.field_error('matricula', errors) }}
                 </div>
 
                 <div>
                     <label>DATA DE NASCIMENTO</label>
-                    <input placeholder="dd/mm/aaaa" type="date" name="data_nasc">
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_nasc" class="{% if errors and 'data_nasc' in errors %}input-error{% endif %}">
+{{ ui.field_error('data_nasc', errors) }}
                 </div>
             </div>
 
@@ -249,22 +286,26 @@
             <div class="form-grid">
                 <div class="full-width">
                     <label>ENDEREÇO RESIDENCIAL*</label>
-                    <input placeholder="Rua Teste n°32 Jardim Tes, São José do Rio Preto" type="text" name="endereco_residencial" required>
+                    <input placeholder="Rua Teste n°32 Jardim Tes, São José do Rio Preto" type="text" name="endereco_residencial" required class="{% if errors and 'endereco_residencial' in errors %}input-error{% endif %}">
+{{ ui.field_error('endereco_residencial', errors) }}
                 </div>
 
                 <div>
                     <label>TELEFONE PESSOAL</label>
-                    <input placeholder="(17) 99123-4567" type="text" name="telefone_pessoal">
+                    <input placeholder="(17) 99123-4567" type="text" name="telefone_pessoal" class="{% if errors and 'telefone_pessoal' in errors %}input-error{% endif %}">
+{{ ui.field_error('telefone_pessoal', errors) }}
                 </div>
 
                 <div>
                     <label>EMAIL PESSOAL</label>
-                    <input placeholder="joao.silva@email.com" type="email" name="email_pessoal">
+                    <input placeholder="joao.silva@email.com" type="email" name="email_pessoal" class="{% if errors and 'email_pessoal' in errors %}input-error{% endif %}">
+{{ ui.field_error('email_pessoal', errors) }}
                 </div>
 
                 <div>
                     <label>EMAIL INSTITUCIONAL*</label>
-                    <input placeholder="joao.silva@der.sp.gov.br" type="email" name="email_institucional">
+                    <input placeholder="joao.silva@der.sp.gov.br" type="email" name="email_institucional" class="{% if errors and 'email_institucional' in errors %}input-error{% endif %}">
+{{ ui.field_error('email_institucional', errors) }}
                     <small>Se não houver email próprio, o sistema poderá usar o email da sede.</small>
                 </div>
 
@@ -272,7 +313,8 @@
                     <label>RAMAL*</label>
                     <div class="ramal-group">
                         <input type="text" class="prefixo-fixo" value="(17) 3218 - " readonly>
-                        <input type="text" name="ramal" placeholder="Digite apenas o ramal ex:4567" required>
+                        <input type="text" name="ramal" placeholder="Digite apenas o ramal ex:4567" required class="{% if errors and 'ramal' in errors %}input-error{% endif %}">
+{{ ui.field_error('ramal', errors) }}
                     </div>
                 </div>
             </div>
@@ -281,82 +323,92 @@
             <div class="form-grid">
                 <div>
                     <label>TIPO*</label>
-                    <select name="tipo" required>
+                    <select name="tipo" required class="{% if errors and 'tipo' in errors %}input-error{% endif %}">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_tipo %}
                       <option value="{{ opcao }}" {% if func and (func.tipo or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
+{{ ui.field_error('tipo', errors) }}
                 </div>
 
                 <div>
                     <label>SUBTIPO DE VÍNCULO</label>
-                    <select name="subtipo_vinculo" required>
+                    <select name="subtipo_vinculo" required class="{% if errors and 'subtipo_vinculo' in errors %}input-error{% endif %}">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_subtipo_vinculo %}
                         <option value="{{ opcao }}" {% if func and (func.subtipo_vinculo or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
+{{ ui.field_error('subtipo_vinculo', errors) }}
                 </div>
 
                 <div>
                     <label>FORMA DE INGRESSO*</label>
-                    <select name="forma_ingresso" required>
+                    <select name="forma_ingresso" required class="{% if errors and 'forma_ingresso' in errors %}input-error{% endif %}">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_forma_ingresso %}
                       <option value="{{ opcao }}" {% if func and (func.forma_ingresso or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
+{{ ui.field_error('forma_ingresso', errors) }}
                 </div>
 
                 <div>
                     <label>PRONTUÁRIO FUNCIONAL</label>
-                    <input placeholder="ex: 0012345" type="text" name="prontuario_funcional">
+                    <input placeholder="ex: 0012345" type="text" name="prontuario_funcional" class="{% if errors and 'prontuario_funcional' in errors %}input-error{% endif %}">
+{{ ui.field_error('prontuario_funcional', errors) }}
                 </div>
 
                 <div>
                     <label>CARGO EM EXERCÍCIO</label>
-                    <input placeholder="Analista Administrativo" type="text" name="cargo_exercicio">
+                    <input placeholder="Analista Administrativo" type="text" name="cargo_exercicio" class="{% if errors and 'cargo_exercicio' in errors %}input-error{% endif %}">
+{{ ui.field_error('cargo_exercicio', errors) }}
                 </div>
 
                 <div>
                     <label>CARGO DE ORIGEM</label>
-                    <input placeholder="Assistente Técnico" type="text" name="cargo_origem">
+                    <input placeholder="Assistente Técnico" type="text" name="cargo_origem" class="{% if errors and 'cargo_origem' in errors %}input-error{% endif %}">
+{{ ui.field_error('cargo_origem', errors) }}
                 </div>
 
                 <div>
                     <label>LOTAÇÃO</label>
-                    <select name="lotacao" required>
+                    <select name="lotacao" required class="{% if errors and 'lotacao' in errors %}input-error{% endif %}">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_lotacao %}
                         <option value="{{ opcao }}" {% if func and (func.lotacao or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
+{{ ui.field_error('lotacao', errors) }}
                 </div>
 
                 <div>
                     <label>ÁREA</label>
-                    <select name="area" required>
+                    <select name="area" required class="{% if errors and 'area' in errors %}input-error{% endif %}">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_area %}
                         <option value="{{ opcao }}" {% if func and (func.area or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
+{{ ui.field_error('area', errors) }}
                 </div>
 
                 <div>
                     <label>COORDENADORIA*</label>
-                    <select name="coordenadoria" required>
+                    <select name="coordenadoria" required class="{% if errors and 'coordenadoria' in errors %}input-error{% endif %}">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_coordenadoria %}
                         <option value="{{ opcao }}" {% if func and (func.coordenadoria or '')|upper == opcao %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
+{{ ui.field_error('coordenadoria', errors) }}
                 </div>
 
                 <div>
                     <label>DOE / PORTARIA</label>
-                    <input placeholder="DOE 1234/2020" type="text" name="doe_portaria">
+                    <input placeholder="DOE 1234/2020" type="text" name="doe_portaria" class="{% if errors and 'doe_portaria' in errors %}input-error{% endif %}">
+{{ ui.field_error('doe_portaria', errors) }}
                 </div>
             </div>
 
@@ -364,32 +416,37 @@
             <div class="form-grid">
                 <div>
                     <label>DATA DE INGRESSO NO DER</label>
-                    <input placeholder="dd/mm/aaaa" type="date" name="data_ingresso_der">
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_ingresso_der" class="{% if errors and 'data_ingresso_der' in errors %}input-error{% endif %}">
+{{ ui.field_error('data_ingresso_der', errors) }}
                 </div>
 
                 <div>
                     <label>DATA DE INÍCIO</label>
-                    <input placeholder="dd/mm/aaaa" type="date" name="data_inicio">
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_inicio" class="{% if errors and 'data_inicio' in errors %}input-error{% endif %}">
+{{ ui.field_error('data_inicio', errors) }}
                 </div>
 
                 <div>
                     <label>DATA DE ADMISSÃO</label>
-                    <input placeholder="dd/mm/aaaa" type="date" name="data_admissao">
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_admissao" class="{% if errors and 'data_admissao' in errors %}input-error{% endif %}">
+{{ ui.field_error('data_admissao', errors) }}
                 </div>
 
                 <div>
                     <label>SITUAÇÃO*</label>
-                    <select name="situacao" id="situacao" required onchange="toggleDataDesligamento()">
+                    <select name="situacao" id="situacao" required class="{% if errors and 'situacao' in errors %}input-error{% endif %}" onchange="toggleDataDesligamento()">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_situacao %}
                       <option value="{{ opcao }}" {% if func and (func.situacao or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
+{{ ui.field_error('situacao', errors) }}
                 </div>
 
                 <div>
                     <label>DATA DE DESLIGAMENTO</label>
-                    <input placeholder="dd/mm/aaaa" type="date" name="data_desligamento">
+                    <input placeholder="dd/mm/aaaa" type="date" name="data_desligamento" class="{% if errors and 'data_desligamento' in errors %}input-error{% endif %}">
+{{ ui.field_error('data_desligamento', errors) }}
                 </div>
             </div>
 
@@ -427,15 +484,38 @@
         function previewFoto(event) {
             const input = event.target;
             const preview = document.getElementById('preview-foto');
-
+            const legenda = document.getElementById('nome-arquivo-selecionado');
             if (input.files && input.files[0]) {
+                const arquivo = input.files[0];
+
+                // Atualiza a legenda com o nome do arquivo
+                legenda.innerHTML = `✓ Selecionado: <strong>${arquivo.name}</strong>`;
+                legenda.style.color = "#166534"; // Verde de sucesso
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     preview.src = e.target.result;
                 };
-                reader.readAsDataURL(input.files[0]);
+                reader.readAsDataURL(arquivo);
             }
         }
+        // Bloqueio do botão submit e feedback de "Salvando..."
+        document.addEventListener("DOMContentLoaded", function() {
+            const forms = document.querySelectorAll("form");
+            forms.forEach(form => {
+                form.addEventListener("submit", function() {
+                    // Evita bloquear o form de remover foto
+                    if (this.id === "form-remover-foto") return;
+                    const submitBtn = this.querySelector("button[type='submit']");
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = "💾 Salvando... Por favor, aguarde.";
+                        submitBtn.style.opacity = "0.7";
+                        submitBtn.style.cursor = "not-allowed";
+                    }
+                });
+            });
+        });
     </script>
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
 </body>
 </html>

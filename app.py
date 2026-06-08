@@ -1,6 +1,8 @@
 import os
 import re
 import shutil
+from collections import Counter
+from threading import Lock
 from typing import Any
 from urllib.parse import urlparse, urljoin
 from datetime import datetime, date, UTC
@@ -108,7 +110,7 @@ AUDITORIA_EXTENSOES_IGNORADAS = (
     '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico',
     '.css', '.js', '.map', '.woff', '.woff2', '.ttf', '.eot',
 )
-AUDITORIA_ROTAS_IGNORADAS = {'/healthz', '/readyz'}
+AUDITORIA_ROTAS_IGNORADAS = {'/healthz', '/readyz', '/metrics'}
 
 def _env_int(nome: str, padrao: int) -> int:
     bruto =(os.getenv(nome, '') or '').strip()
@@ -122,6 +124,93 @@ def _env_int(nome: str, padrao: int) -> int:
 app.config['AUDIT_RETENCAO_DIAS_GERAL']= _env_int('AUDIT_RETENCAO_DIAS_GERAL', 365)
 app.config['AUDIT_RETENCAO_DIAS_SEGURANCA'] = _env_int('AUDIT_RETENCAO_DIAS_SEGURANCA', 1825)
 app.config['AUDIT_RETENCAO_DIAS_ALERTA'] = _env_int('AUDIT_RETENCAO_DIAS_ALERTA', 3650)
+
+_METRICAS_LOCK = Lock()
+_METRICAS = Counter()
+_LATENCIA_BUCKETS_MS = (50, 100, 250, 500, 1000, 2000, 5000)
+_LATENCIA_HIST = Counter()
+
+
+def _rotulo_rota_metricas() -> str:
+    if request.endpoint:
+        return request.endpoint
+    return request.path or 'desconhecida'
+
+
+def _registrar_metricas_requisicao(response, duracao_ms: float | None = None):
+    rota = _rotulo_rota_metricas()
+    status = str(response.status_code)
+    metodo = request.method.upper()
+
+    with _METRICAS_LOCK:
+        _METRICAS['http_requests_total'] += 1
+        _METRICAS[f'http_requests_by_method_total|{metodo}'] += 1
+        _METRICAS[f'http_requests_by_status_total|{status}'] += 1
+        _METRICAS[f'http_requests_by_route_total|{rota}'] += 1
+
+        if response.status_code >= 500:
+            _METRICAS['http_server_errors_total'] += 1
+        elif response.status_code >= 400:
+            _METRICAS['http_client_errors_total'] += 1
+
+        if duracao_ms is not None:
+            _METRICAS['http_request_duration_ms_sum'] += duracao_ms
+            _METRICAS['http_request_duration_ms_count'] += 1
+            limite_b = next((b for b in _LATENCIA_BUCKETS_MS if duracao_ms <= b), 'inf')
+            _LATENCIA_HIST[f'http_request_duration_ms_bucket|{limite_b}'] += 1
+            _LATENCIA_HIST['http_request_duration_ms_bucket|+Inf'] += 1
+
+    return response
+
+
+def _formatar_metricas_prometheus() -> str:
+    with _METRICAS_LOCK:
+        linhas = [
+            '# HELP http_requests_total Total de requisicoes HTTP.',
+            '# TYPE http_requests_total counter',
+            f'http_requests_total {_METRICAS.get("http_requests_total", 0)}',
+            '# HELP http_requests_by_method_total Total de requisicoes por metodo HTTP.',
+            '# TYPE http_requests_by_method_total counter',
+            '# HELP http_requests_by_status_total Total de requisicoes por status HTTP.',
+            '# TYPE http_requests_by_status_total counter',
+            '# HELP http_requests_by_route_total Total de requisicoes por rota.',
+            '# TYPE http_requests_by_route_total counter',
+            '# HELP http_server_errors_total Total de respostas 5xx.',
+            '# TYPE http_server_errors_total counter',
+            f'http_server_errors_total {_METRICAS.get("http_server_errors_total", 0)}',
+            '# HELP http_client_errors_total Total de respostas 4xx.',
+            '# TYPE http_client_errors_total counter',
+            f'http_client_errors_total {_METRICAS.get("http_client_errors_total", 0)}',
+            '# HELP http_request_duration_ms Latencia das requisicoes em milissegundos.',
+            '# TYPE http_request_duration_ms histogram',
+        ]
+
+        for key, valor in sorted(_METRICAS.items()):
+            if '|' in key:
+                base, sufixo = key.split('|', 1)
+                if base == 'http_requests_by_method_total':
+                    linhas.append(f'{base}{{method="{sufixo}"}} {valor}')
+                elif base == 'http_requests_by_status_total':
+                    linhas.append(f'{base}{{status="{sufixo}"}} {valor}')
+                elif base == 'http_requests_by_route_total':
+                    linhas.append(f'{base}{{route="{sufixo}"}} {valor}')
+
+        if _METRICAS.get('http_request_duration_ms_count', 0):
+            linhas.append(f'http_request_duration_ms_sum {_METRICAS.get("http_request_duration_ms_sum", 0):.2f}')
+            linhas.append(f'http_request_duration_ms_count {_METRICAS.get("http_request_duration_ms_count", 0)}')
+            acumulado = 0
+            for bucket in (*_LATENCIA_BUCKETS_MS, 'inf'):
+                acumulado += _LATENCIA_HIST.get(f'http_request_duration_ms_bucket|{bucket}', 0)
+                le = '+Inf' if bucket == 'inf' else bucket
+                linhas.append(f'http_request_duration_ms_bucket{{le="{le}"}} {acumulado}')
+        else:
+            linhas.append('http_request_duration_ms_sum 0')
+            linhas.append('http_request_duration_ms_count 0')
+            for bucket in (*_LATENCIA_BUCKETS_MS, 'inf'):
+                le = '+Inf' if bucket == 'inf' else bucket
+                linhas.append(f'http_request_duration_ms_bucket{{le="{le}"}} 0')
+
+    return '\n'.join(linhas) + '\n'
 
 def _limitar_texto_auditoria(valor: Any, limite: int = AUDITORIA_MAX_TEXTO) -> str:
     texto = str(valor)
@@ -430,7 +519,7 @@ def is_safe_url(target):
 @app.after_request
 def adicionar_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline';"
+    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline'; img-src 'self' data:;"
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
@@ -527,6 +616,10 @@ def registrar_metricas(response):
         )
 
     return response
+
+@app.errorhandler(429)
+def limite_excedido(e):
+    return render_template("429.html"), 429
 
 @app.errorhandler(RequestEntityTooLarge)
 def upload_excedido(e):

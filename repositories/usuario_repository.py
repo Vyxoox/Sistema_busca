@@ -1,7 +1,7 @@
 from typing import List, Optional
 from core.extensions import db
 from core.exceptions import UsuarioNaoEncontrado
-from models import Usuario
+from models import Usuario, LogAuditoria
 
 class UsuarioRepository:
     @staticmethod
@@ -30,5 +30,12 @@ class UsuarioRepository:
 
     @staticmethod
     def excluir(usuario: Usuario) -> None:
+        # Preserva o histórico de auditoria e evita violação de FK ao remover o usuário.
+        LogAuditoria.query.filter(
+            LogAuditoria.usuario_id == usuario.id
+        ).update(
+            {LogAuditoria.usuario_id: None},
+            synchronize_session=False,
+        )
         db.session.delete(usuario)
         db.session.commit()

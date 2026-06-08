@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% import 'macros.html' as ui %}
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -78,8 +79,11 @@
             margin-top: 4px;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css')}}">
 </head>
 
+<body>
 <header>
     <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
     <div class="TituloHeader">
@@ -88,8 +92,7 @@
     </div>
     <div></div>
 </header>
-
-<body>
+{{ ui.flash_messages() }}
     <div class="container">
         <h1>🔍 Sistema de Busca de Funcionários</h1>
 
@@ -296,5 +299,7 @@
             </footer>
         </div>
     </div>
+
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
 </body>
 </html>

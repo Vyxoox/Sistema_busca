@@ -110,9 +110,22 @@ def novo_servidor():
             foto = request.files.get('foto')
             salvar_foto(current_app.root_path, foto, func.id)
             db.session.commit()
-        except Exception:
+        except Exception as e:
             db.session.rollback()
-            raise
+            # IntegrityError – duplicata de matrícula, CPF, etc.
+            if 'IntegrityError' in type(e).__name__ or (hasattr(e, 'orig') and 'IntegrityError' in type(e.orig).__name__):
+                msg_erro = str(e.orig) if hasattr(e, 'orig') else str(e)
+                if 'matricula' in msg_erro.lower():
+                    flash('Já existe um funcionário com esta matrícula.', 'error')
+                elif 'cpf' in msg_erro.lower():
+                    flash('Já existe um funcionário com este CPF.', 'error')
+                else:
+                    flash('Erro: registro duplicado. Verifique os dados e tente novamente.', 'error')
+                current_app.logger.warning('IntegrityError ao cadastrar servidor: %s', e)
+                return redirect(request.url)
+            current_app.logger.exception('Erro inesperado ao cadastrar servidor')
+            flash('Erro inesperado ao salvar. Tente novamente.', 'error')
+            return redirect(request.url)
 
         registrar_evento_seguro(
             'FUNCIONARIO_CADASTRAR_SERVIDOR_SUCESSO',
@@ -154,7 +167,16 @@ def novo_servidor():
             'success'
         )
         return redirect(url_for('painel'))
-
+    return render_template(
+        'form_servidor.html',
+        opcoes_tipo=OPCOES_TIPO,
+        opcoes_situacao=OPCOES_SITUACAO,
+        opcoes_area=OPCOES_AREA,
+        opcoes_forma_ingresso=OPCOES_FORMA_INGRESSO,
+        opcoes_lotacao=OPCOES_LOTACAO,
+        opcoes_coordenadoria=OPCOES_COORDENADORIA,
+        opcoes_subtipo_vinculo=OPCOES_SUBTIPO_VINCULO,
+    )
 @criacao_bp.route('/funcionario/novo/terceirizado', methods=['GET', 'POST'])
 @login_required
 @audit_event()
@@ -215,9 +237,21 @@ def novo_terceirizado():
             foto = request.files.get('foto')
             salvar_foto(current_app.root_path, foto, func.id)
             db.session.commit()
-        except Exception:
+        except Exception as e:
             db.session.rollback()
-            raise
+            if 'IntegrityError' in type(e).__name__ or (hasattr(e, 'orig') and 'IntegrityError' in type(e.orig).__name__):
+                msg_erro = str(e.orig) if hasattr(e, 'orig') else str(e)
+                if 'matricula' in msg_erro.lower():
+                    flash('Já existe um funcionário com esta matrícula.', 'error')
+                elif 'cpf' in msg_erro.lower():
+                    flash('Já existe um funcionário com este CPF.', 'error')
+                else:
+                    flash('Erro: registro duplicado. Verifique os dados e tente novamente.', 'error')
+                current_app.logger.warning('IntegrityError ao cadastrar terceirizado: %s', e)
+                return redirect(request.url)
+            current_app.logger.exception('Erro inesperado ao cadastrar terceirizado')
+            flash('Erro inesperado ao salvar. Tente novamente.', 'error')
+            return redirect(request.url)
 
         registrar_evento_seguro(
             'FUNCIONARIO_CADASTRAR_TERCEIRIZADO_SUCESSO',
@@ -279,3 +313,32 @@ def novo_terceirizado():
 @audit_event()
 def novo_funcionario():
     return redirect(url_for('painel'))
+
+
+@criacao_bp.route('/preview/form-errors')
+@login_required
+@audit_event()
+def preview_form_errors():
+    errors = {
+        'nome_completo': 'Informe o nome completo.',
+        'cpf': 'CPF invalido.',
+        'email_institucional': 'Informe um e-mail institucional valido.',
+        'tipo': 'Selecione o tipo.',
+        'situacao': 'Selecione a situacao.',
+        'ramal': 'Informe apenas os 4 ultimos digitos do ramal.',
+    }
+    form_data = {
+        'nome_completo': '',
+        'cpf': '123.456.789-00',
+        'email_institucional': '',
+        'tipo': '',
+        'situacao': '',
+        'ramal': '12',
+    }
+    return render_template(
+        'preview_form_errors.html',
+        errors=errors,
+        form_data=form_data,
+        opcoes_tipo=OPCOES_TIPO,
+        opcoes_situacao=OPCOES_SITUACAO,
+    )

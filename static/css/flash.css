@@ -1,0 +1,61 @@
+#flash-container {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.flash-container-compact {
+    margin: 0 0 0.85rem;
+}
+
+/* Base */
+.flash {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    animation: fadeIn 0.3s ease-out;
+    position: relative;
+}
+
+.flash-compact {
+    align-items: flex-start;
+    padding: 0.65rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    text-align: left;
+}
+
+/* Cores */
+.flash.success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+.flash.error   { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+.flash.warning { background:#fff3cd; color:#856404; border:1px solid #ffeeba; }
+.flash.info    { background:#d1ecf1; color:#0c5460; border:1px solid #bee5eb; }
+
+/* Botão fechar */
+.flash-close {
+    background: transparent;
+    border: none;
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: 1rem;
+    font-size: 1.0rem;
+    line-height: 1.2;
+    color: inherit;
+    cursor: pointer;
+    padding: 0 0.2rem;
+}
+
+.flash-compact .flash-close {
+    margin-left: 0.5rem;
+    font-size: 1rem;
+}
+
+/* Animação */
+@keyframes fadeIn {
+    from { opacity:0; transform:translateY(-4px); }
+    to   { opacity:1; transform:translateY(0); }
+}

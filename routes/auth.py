@@ -50,7 +50,7 @@ def login():
             )
             return render_template('login.html'), 429
 
-        user : UsuarioRepository.buscar_por_login(login_value)
+        user = UsuarioRepository.buscar_por_login(login_value)
 
         if user and user.check_password(password):
             login_user(user)

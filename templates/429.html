@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Muitas Requisições - DER</title>
+    <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
+    <style>
+        :root {
+            --bg: #f3f6fb;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --line: #dbe2ea;
+            --primary: #1f4b8f;
+            --primary-hover: #2d5da8;
+            --warning-color: #b45309;
+            --warning-bg: #fffbeb;
+            --warning-border: #fde68a;
+            --header-bg: #e7e247;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background-color: var(--header-bg);
+            height: 125px;
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .TituloHeader { text-align: center; }
+        .titulo { color: #001032; font-size: 32px; font-weight: bold; }
+        .subtitulo { color: #001032; font-size: 24px; font-weight: bold; margin-top: 4px; }
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: var(--card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+            text-align: center;
+        }
+        .icon-box {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #d97706; /* Laranja de aviso */
+        }
+        h1 {
+            font-size: 24px;
+            color: #1e293b;
+            margin-bottom: 12px;
+        }
+        p {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .alert-box {
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning-color);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #fff;
+            background: var(--primary);
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+        footer {
+            background: #fff;
+            margin-top: auto;
+            text-align: center;
+            border-top: 1px solid var(--line);
+            padding: 24px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        footer p { margin: 4px 0; }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css')}}">
+</head>
+<body>
+<header>
+    <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+        <div class="TituloHeader">
+            <div class="titulo">Departamento de Estradas e Rodagem</div>
+            <div class="subtitulo">Relatório de Funcionários</div>
+        </div>
+</header>
+{{ ui.flash_messages() }}
+
+
+    <div class="main-content">
+        <div class="container">
+            <div class="icon-box">🔄️</div>
+                <h1>Acesso Limitado Temporariamente</h1>
+                <p>Identificamos um fluxo incomum de requisições vindo da sua rede. Para manter a segurança e estabilidade do sistema, o acesso foi temporariamente bloqueado.</p>
+
+                <div class="alert-box">
+                    <strong>Erro 429:</strong> Muitas requisições. Aguarde 1 minuto e tente novamente.
+                </div>
+
+                <a class="btn" href="{{ url_for('auth.login') }}">Voltar a Tela de Login</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 Departamento de Estradas de Rodagem – D.E.R. / CGR.9</p>
+        <p>Conteúdo Restrito e Sigiloso – Protegido pela LGPD</p>
+    </footer>
+
+<script src="{{ url_for('static', filename='js/flash.js') }}"></script>
+</body>
+</html>
