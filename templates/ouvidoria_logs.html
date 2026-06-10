@@ -1,5 +1,15 @@
 <!DOCTYPE html>
 {% import 'macros.html' as ui %}
+<!--suppress ALL -->
+
+
+
+
+
+
+
+
+
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -23,7 +33,7 @@
     }
 
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: var(--bg);
       margin: 0;
       color: var(--text);
@@ -281,6 +291,7 @@
   </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 </head>
 <body>
 {{ ui.flash_messages() }}

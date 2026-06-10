@@ -1,5 +1,23 @@
 <!DOCTYPE html>
 {% import 'macros.html' as ui %}
+<!--suppress ALL -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -210,6 +228,7 @@
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 
     <script>
         function toggleCamposVinculo() {
@@ -485,7 +504,6 @@
                 <div>
                     <label>RAMAL*</label>
                     <div class="ramal-group">
-                        <input type="text" class="prefixo-fixo" value="173218" readonly>
                         <input type="text" class="prefixo-fixo" value="173218" readonly>
 <input type="text" name="ramal" value="{{ func.ramal[6:] if func and func.ramal and func.ramal.startswith('173218') else (func.ramal if func else '') }}" class="{% if errors and 'ramal' in errors %}input-error{% endif %}" required>
 {{ ui.field_error('ramal', errors) }}

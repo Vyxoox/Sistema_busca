@@ -1,6 +1,8 @@
 import os
 import re
 import shutil
+import logging
+
 from collections import Counter
 from threading import Lock
 from typing import Any
@@ -17,12 +19,15 @@ from whoosh.query import Every
 from time import perf_counter
 from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
+from core.authz import superadmin_required
+
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
-from core.extensions import db, login_manager, csrf, migrate, limiter
+from core.extensions import db, login_manager, csrf, limiter
 from models import Usuario, Funcionario
 from core.config import Config
 from core.schema import schema
+from core.logging_setup import setup_logging
 from routes.auth import auth_bp
 from routes.funcionarios import funcionarios_bp
 from routes.busca import busca_bp
@@ -43,6 +48,15 @@ from core.audit_policy import audit_event
 
 app = Flask(__name__)
 app.config.from_object(Config)
+APP_START_TIME = datetime.now(UTC)
+
+# Logging com rotação por categoria (aplicação/segurança/auditoria/erros)
+setup_logging(app)
+logging.getLogger("observabilidade").info("TESTE OBSERVABILIDADE")
+logging.getLogger("auditoria").info("TESTE AUDITORIA")
+logging.getLogger("seguranca").info("TESTE SEGURANCA")
+logging.getLogger("erros").error("TESTE ERRO")
+app.logger.info("TESTE APP LOGGER")
 
 db.init_app(app)
 
@@ -159,6 +173,9 @@ def _registrar_metricas_requisicao(response, duracao_ms: float | None = None):
             limite_b = next((b for b in _LATENCIA_BUCKETS_MS if duracao_ms <= b), 'inf')
             _LATENCIA_HIST[f'http_request_duration_ms_bucket|{limite_b}'] += 1
             _LATENCIA_HIST['http_request_duration_ms_bucket|+Inf'] += 1
+
+        if request.endpoint == "static":
+            return response
 
     return response
 
@@ -528,6 +545,10 @@ def adicionar_security_headers(response):
 @app.before_request
 def iniciar_auditoria_requisicao():
     g.audit_inicio = datetime.now(UTC)
+    # request_id compartilhado para logs e auditoria
+    if not hasattr(g, "audit_request_id"):
+        # reusa o id se já existir em algum fluxo; caso contrário gera
+        g.audit_request_id = getattr(g, "audit_request_id", None) or os.urandom(16).hex()
 
 
 @app.after_request
@@ -570,6 +591,9 @@ def registrar_metricas(response):
         None
     )
 
+    # Métricas Prometheus (counter/histograma) já preparadas no arquivo
+    # Observação: duracao_ms calculada logo abaixo.
+
     if inicio is None:
         return response
 
@@ -578,11 +602,10 @@ def registrar_metricas(response):
         2
     )
 
+    _registrar_metricas_requisicao(response, duracao_ms=duracao_ms)
+
     current_app.logger.info(
-        f"{request.method} "
-        f"{request.path} "
-        f"{response.status_code} "
-        f"{duracao_ms}ms"
+        f"{request.method} {request.path} {response.status_code} {duracao_ms}ms"
     )
 
     if duracao_ms > 2000:
@@ -813,31 +836,36 @@ def reindexar_todos():
 # CRIAÇÃO DAS TABELAS E ADMIN
 # ============================================
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
 
-    admin = Usuario.query.filter_by(login='admin').first()
-    if not admin:
-        admin = Usuario(login='admin', is_admin=True, is_superadmin=True, perfil='CA.9')
-        admin.set_password(os.getenv('ADMIN_PASSWORD', 'troque-essa-senha'))
-        db.session.add(admin)
-        db.session.commit()
-    else:
-        alterado = False
-
-        if not admin.is_admin:
-            admin.is_admin = True
-            alterado = True
-
-        if not admin.is_superadmin:
-            admin.is_superadmin = True
-            alterado = True
-
-        if not admin.perfil:
-            admin.perfil = 'CA.9'
-            alterado = True
-
-        if alterado:
+        admin = Usuario.query.filter_by(login='admin').first()
+        if not admin:
+            admin = Usuario(login='admin', is_admin=True, is_superadmin=True, perfil='CA.9')
+            admin.set_password(os.getenv('ADMIN_PASSWORD', 'troque-essa-senha'))
+            db.session.add(admin)
             db.session.commit()
+        else:
+            alterado = False
+
+            if not admin.is_admin:
+                admin.is_admin = True
+                alterado = True
+
+            if not admin.is_superadmin:
+                admin.is_superadmin = True
+                alterado = True
+
+            if not admin.perfil:
+                admin.perfil = 'CA.9'
+                alterado = True
+
+            if alterado:
+                db.session.commit()
+    except Exception as e:
+        app.logger.error(
+            f"Falha no bootstrap do banco: {e}"
+        )
 
 
 @login_manager.user_loader
@@ -866,13 +894,41 @@ def _readiness_status() -> tuple[bool, dict[str, str]]:
 
 @app.get('/healthz')
 def healthz():
+    current_app.logger.info(
+        "healthz ok",
+        extra={
+            "category": "observabilidade",
+            "request_id": getattr(g, "audit_request_id", None),
+            "method": request.method,
+            "path": request.path,
+            "status_code": 200,
+            "duration_ms": None,
+            "ip": request.headers.get("X-Forwarded-For", request.remote_addr) or "",
+        }
+    )
     return jsonify({"status": "ok"}), 200
+
 
 @app.get('/readyz')
 def readyz():
     pronto, detalhes = _readiness_status()
+    current_app.logger.info(
+        f"readyz {'ready' if pronto else 'not_ready'}",
+        extra={
+            "category": "observabilidade",
+            "database": detalhes.get("database"),
+            "indice": detalhes.get("indice")
+        }
+    )
     payload ={"status": "ready" if pronto else "not_ready", **detalhes}
     return jsonify(payload), (200 if pronto else 503)
+
+@app.get('/metrics')
+def metrics():
+    # Resposta Prometheus dos contadores/histogramas em memória
+    return _formatar_metricas_prometheus(), 200, {
+        "Content-Type": "text/plain; version=0.0.4; charset=utf-8"
+    }
 
 # ============================================
 # ROTAS ADMINISTRATIVAS
@@ -882,6 +938,7 @@ def readyz():
 @login_required
 @audit_event()
 def painel():
+    print(app.logger.handlers)
     perfil = obter_perfil_usuario(current_user)
     ordem_nome = (
         func.lower(func.trim(func.coalesce(Funcionario.nome_completo, ''))),
@@ -905,6 +962,93 @@ def painel():
 
     return render_template('painel.html', funcionarios=funcionarios)
 
+@app.route('/observabilidade')
+@login_required
+@superadmin_required
+@audit_event()
+def observabilidade():
+
+    with _METRICAS_LOCK:
+        request_total = _METRICAS.get(
+            'http_requests_total',
+            0
+        )
+
+        errors_4xx = _METRICAS.get(
+            'http_client_errors_total',
+            0
+        )
+
+        errors_5xx = _METRICAS.get(
+            'http_server_errors_total',
+            0
+        )
+
+        soma = _METRICAS.get(
+            'http_request_duration_ms_sum',
+            0
+        )
+
+        count = _METRICAS.get(
+            'http_request_duration_ms_count',
+            0
+        )
+
+    latencia_media = round(
+        soma/count,
+        2
+    )if count else 0
+
+    top_rotas = []
+
+    with _METRICAS_LOCK:
+        for chave, valor in _METRICAS.items():
+
+            if chave.startswith(
+                "http_requests_by_route_total|"
+            ):
+
+                rota = chave.split("|", 1)[1]
+
+                if rota not in [
+                    "static",
+                    "observabilidade",
+                    "metrics",
+                    "healthz",
+                    "readyz"
+                ]:
+                    top_rotas.append(
+                        (rota, valor)
+                    )
+
+    top_rotas.sort(
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    uptime_segundos = int(
+        (datetime.now(UTC) - APP_START_TIME).total_seconds()
+    )
+
+    horas = uptime_segundos // 3600
+    minutos = (uptime_segundos % 3600) // 60
+    segundos = uptime_segundos % 60
+
+    uptime_formatado = f"{horas}h {minutos}m {segundos}s"
+
+    pronto, detalhes = _readiness_status()
+
+    return render_template(
+        'observabilidade.html',
+        request_total=request_total,
+        errors_4xx=errors_4xx,
+        errors_5xx=errors_5xx,
+        latencia_media=latencia_media,
+        top_rotas=top_rotas[:10],
+        pronto=pronto,
+        detalhes=detalhes,
+        uptime=uptime_formatado
+    )
 # ============================================
 # MIGRAÇÃO / IMPORTAÇÃO
 # ============================================

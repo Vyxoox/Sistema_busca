@@ -1,43 +1,22 @@
 <!DOCTYPE html>
 {% import 'macros.html' as ui %}
+<!--suppress ALL -->
+
+
+
+
+
+
+
+
+
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <title>Novo Administrador - DER</title>
     <link rel="icon" href="{{ url_for('static', filename='LOGO_DER.jpg') }}" type="image/jpeg">
     <style>
-        :root {
-            --bg: #f3f6fb;
-            --card: #ffffff;
-            --text: #0f172a;
-            --muted: #475569;
-            --line: #dbe2ea;
-            --primary: #1f4b8f;
-            --primary-hover: #2d5da8;
-            --err: #b91c1c;
-            --err-soft: #fee2e2;
-            --neutral: #1e293b;
-            --header-bg: #e7e247;
-        }
 
-        body {
-            font-family: Arial, sans-serif;
-            background: var(--bg);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        header {
-            background-color: var(--header-bg);
-            height: 125px;
-            display: grid;
-            grid-template-columns: 200px 1fr 200px;
-            align-items: center;
-            padding: 0 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
 
         .TituloHeader { text-align: center; }
         .titulo { color: #001032; font-size: 32px; font-weight: bold; }
@@ -88,18 +67,6 @@
             box-shadow: 0 0 0 3px rgba(31, 75, 143, 0.1);
         }
 
-        input.input-error, select.input-error {
-            border-color: var(--err);
-            background-color: #fffafb;
-        }
-
-        .error-message {
-            color: var(--err);
-            font-size: 12px;
-            margin-top: 6px;
-            font-weight: 500;
-        }
-
         .btn {
             width: 100%;
             padding: 14px;
@@ -137,6 +104,7 @@
     </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 </head>
 <body>
 <header>
@@ -190,7 +158,7 @@
                     {{ ui.field_error('lotacao', errors) }}
                 </div>
 
-                <button type="submit" class="btn">Criar Administrador</button>
+                <button type="submit" class="btn" style="background-color: #1F4B8F; align-items: center; display: inline-grid">Criar Administrador</button>
             </form>
 
             <a href="{{ url_for('usuarios.listar_admin') }}" class="back-link">← Voltar para listagem</a>

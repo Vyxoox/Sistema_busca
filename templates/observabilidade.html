@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+{% import 'macros.html' as ui %}
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observabilidade -  SIST</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
+</head>
+<body>
+<header>
+    <img src="{{ url_for('static', filename='sãopaulo.png') }}" alt="logo do estado de São Paulo" style="width: 125px; height: 125px;">
+    <div class="TituloHeader">
+        <div class="titulo">Departamento de Estradas e Rodagem</div>
+        <div class="subtitulo">Sistema de Informação de Servidores e Terceirizados</div>
+    </div>
+    <div>
+        <a href="{{ url_for('painel') }}" class="btn btn-home">
+            Voltar ao Painel
+        </a>
+    </div>
+</header>
+
+<div class="container">
+    <h1>Observabilidade</h1>
+
+    <div class="secao-card">
+        <h2>Métricas Gerais</h2>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+                <h3>Requests</h3>
+                <span>{{ request_total }}</span>
+            </div>
+
+            <div class="stat-card">
+                <h3>Erros 4xx</h3>
+                <span>{{ errors_4xx }}</span>
+            </div>
+
+            <div class="stat-card">
+                <h3>Erros 5xx</h3>
+                <span>{{ errors_5xx }}</span>
+            </div>
+
+            <div class="stat-card">
+                <h3>Latência Média</h3>
+                <span>{{ latencia_media }} ms</span>
+            </div>
+
+            <div class="stat-card">
+                <h3>Tempo de Uso</h3>
+                <span>{{ uptime }}</span>
+            </div>
+
+        </div>
+
+    <div class="secao-card">
+        <h2>Status dos Serviços</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Serviços</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>Banco de Dados</td>
+                        <td>
+                            {% if detalhes.database == 'ok' %}
+                                <span class="badge-status status-ativo">
+                                    Online
+                                </span>
+                            {% else %}
+                                <span class="badge-status status-inativo">
+                                    Offline
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Índice de Busca</td>
+                        <td>
+                            {% if detalhes.indice == 'ok' %}
+                                <span class="badge-status status-ativo">
+                                    Online
+                                </span>
+                            {% else %}
+                                <span class="badge-status status-inativo">
+                                    Offline
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+        <div class="secao-card">
+
+            <h2>Top Rotas</h2>
+
+            <div class="table-wrapper">
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Rota</th>
+                            <th>Requisições</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for rota, total in top_rotas %}
+                        <tr>
+                            <td>{{ rota }}</td>
+                            <td>{{ total }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+</div>
+
+
+<footer>
+    <p>SIST - Sistema Integrado de Servidores e Terceirizados</p>
+</footer>
+</body>
+</html>

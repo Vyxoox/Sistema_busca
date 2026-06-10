@@ -218,6 +218,7 @@
   </style>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/flash.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/form-errors.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
 </head>
 <body>
 {{ ui.flash_messages() }}
@@ -293,6 +294,7 @@
         </thead>
         <tbody>
         {% for item in alteracoes_struct %}
+        <!--suppress GrazieInspection -->
         <tr>
             <td>{{ item.campo }}</td>
             <td>{%if '\n' in item.antes %}<pre class="inline-pre">{{ item.antes }}</pre>{% else%}{{ item.antes}}{% endif %}</td>
