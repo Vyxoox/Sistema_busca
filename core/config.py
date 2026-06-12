@@ -10,12 +10,6 @@ def _engine_options(database_uri: str | None) -> dict:
         }
     }
 
-    if database_uri and not database_uri.lower().startswith("sqlite"):
-        options.update({
-            "pool_size": 10,
-            "max_overflow": 20,
-        })
-
     return options
 
 

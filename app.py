@@ -641,7 +641,19 @@ def registrar_metricas(response):
     return response
 
 @app.errorhandler(429)
+@audit_event()
 def limite_excedido(e):
+
+    registrar_evento_seguro(
+        "APP_LIMITE_EXCEDIDO",
+        categoria="SEGURANÇA",
+        status="falha",
+        recurso=request.path,
+        detalhes={
+            "erro": str(e),
+            "tipo_erro": type(e).__name__
+        }
+    )
     return render_template("429.html"), 429
 
 @app.errorhandler(RequestEntityTooLarge)

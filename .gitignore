@@ -1,6 +1,7 @@
 # Python bytecode
 __pycache__/
 *.py[cod]
+.junie
 
 # Virtual environments
 .venv/
