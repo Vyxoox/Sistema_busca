@@ -27,6 +27,7 @@ def index():
 
     ix = current_app.config['WHOOSH_IX']
     resultados = executar_busca(ix, query, vinculo_selecionado) if busca_realizada else []
+    print("ROTA RECEBEU =", len(resultados))
     total_resultados = len(resultados)
     total_pages = max((total_resultados + per_page - 1) // per_page, 1)
 

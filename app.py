@@ -103,14 +103,18 @@ EMAIL_SEDE_PADRAO = os.getenv('EMAIL_SEDE_PADRAO', 'sede@der.sp.gov.br')
 # ============================================
 # CONFIGURAÇÃO DO WHOOSH
 # ============================================
-CAMINHO_INDICE = "indice_funcionarios"
+CAMINHO_INDICE = os.path.abspath("indice_funcionarios")
 if not os.path.exists(CAMINHO_INDICE):
     os.mkdir(CAMINHO_INDICE)
     ix = create_in(CAMINHO_INDICE, schema)
 else:
+    print("Pasta atual:", os.getcwd())
+    print("Índice absoluto:", CAMINHO_INDICE)
     ix = open_dir(CAMINHO_INDICE)
 
 app.config['WHOOSH_IX'] = ix
+with ix.searcher() as s:
+    print("APP START DOCS =", s.doc_count())
 
 # ============================================
 # FUNÇÕES AUXILIARES
@@ -787,7 +791,11 @@ def reindexar_todos():
         ix = create_in(CAMINHO_INDICE, schema)
     except Exception as e:
         print(f"⚠️ Erro ao remover pasta do índice: {e}")
+        print("Pasta atual:", os.getcwd())
+        print("Índice:", os.path.abspath(CAMINHO_INDICE))
         ix = open_dir(CAMINHO_INDICE)
+        with ix.searcher() as s:
+            print("Whoosh abriu com", s.doc_count(), "documentos")
         writer = ix.writer()
         writer.delete_by_query(Every())
         writer.commit()
@@ -950,7 +958,6 @@ def metrics():
 @login_required
 @audit_event()
 def painel():
-    print(app.logger.handlers)
     perfil = obter_perfil_usuario(current_user)
     ordem_nome = (
         func.lower(func.trim(func.coalesce(Funcionario.nome_completo, ''))),
