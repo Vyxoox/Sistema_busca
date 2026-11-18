@@ -86,6 +86,10 @@
             background: #eee;
         }
 
+        .hidden {
+            display: none;
+        }
+
         small {
             color: #666;
             display: block;
@@ -255,7 +259,7 @@
             <div class="form-grid">
                 <div>
                     <label>CPF*</label>
-                    <input placeholder="123.456.789-01" type="text" name="cpf" id="cpf" required oninput="mascaraCPF(this)" class="{% if errors and 'cpf' in errors %}input-error{% endif %}">
+                    <input placeholder="123.456.789-01" type="text" name="cpf" id="cpf" oninput="mascaraCPF(this)" class="{% if errors and 'cpf' in errors %}input-error{% endif %}">
 {{ ui.field_error('cpf', errors) }}
                 </div>
 
@@ -310,6 +314,12 @@
 {{ ui.field_error('telefone_pessoal', errors) }}
                 </div>
 
+                 <div>
+                    <label>CONTATO DE EMERGÊNCIA</label>
+                    <input placeholder="(17) 99123-4567" type="text" name="contato_emergencia" class="{% if errors and 'contato_emergencia' in errors %}input-error{% endif %}">
+{{ ui.field_error('contato_emergencia', errors) }}
+                </div>
+
                 <div>
                     <label>EMAIL PESSOAL</label>
                     <input placeholder="joao.silva@email.com" type="email" name="email_pessoal" class="{% if errors and 'email_pessoal' in errors %}input-error{% endif %}">
@@ -320,7 +330,7 @@
                     <label>EMAIL INSTITUCIONAL*</label>
                     <input placeholder="joao.silva@der.sp.gov.br" type="email" name="email_institucional" class="{% if errors and 'email_institucional' in errors %}input-error{% endif %}">
 {{ ui.field_error('email_institucional', errors) }}
-                    <small>Se não houver email próprio, o sistema poderá usar o email da sede.</small>
+                    <small>Se não houver email próprio, o sistema poderá usar o email da unidade de lotação.</small>
                 </div>
 
                 <div>
@@ -362,7 +372,7 @@
                     <select name="forma_ingresso" required class="{% if errors and 'forma_ingresso' in errors %}input-error{% endif %}">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_forma_ingresso %}
-                      <option value="{{ opcao }}" {% if func and (func.forma_ingresso or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      <option value="{{ opcao }}" {% if func and (func.forma_ingresso or '')|upper == opcao|upper %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
 {{ ui.field_error('forma_ingresso', errors) }}
@@ -441,25 +451,19 @@
                 </div>
 
                 <div>
-                    <label>DATA DE ADMISSÃO</label>
-                    <input placeholder="dd/mm/aaaa" type="date" name="data_admissao" class="{% if errors and 'data_admissao' in errors %}input-error{% endif %}">
-{{ ui.field_error('data_admissao', errors) }}
-                </div>
-
-                <div>
                     <label>SITUAÇÃO*</label>
                     <select name="situacao" id="situacao" required class="{% if errors and 'situacao' in errors %}input-error{% endif %}" onchange="toggleDataDesligamento()">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_situacao %}
-                      <option value="{{ opcao }}" {% if func and (func.situacao or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      <option value="{{ opcao }}" {% if func and (func.situacao or '')|upper == opcao|upper %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
 {{ ui.field_error('situacao', errors) }}
                 </div>
 
-                <div>
+                <div id="container-data-desligamento" class="hidden">
                     <label>DATA DE DESLIGAMENTO</label>
-                    <input placeholder="dd/mm/aaaa" type="date" name="data_desligamento" class="{% if errors and 'data_desligamento' in errors %}input-error{% endif %}">
+                    <input placeholder="dd/mm/aaaa" type="date" id="data_desligamento" name="data_desligamento" class="{% if errors and 'data_desligamento' in errors %}input-error{% endif %}">
 {{ ui.field_error('data_desligamento', errors) }}
                 </div>
             </div>
@@ -512,8 +516,29 @@
                 reader.readAsDataURL(arquivo);
             }
         }
+        function toggleDataDesligamento() {
+            const situacaoElem = document.getElementById('situacao');
+            if (!situacaoElem) return;
+            const situacao = situacaoElem.value.toUpperCase();
+            const dataDesligamento = document.getElementById('data_desligamento');
+            const containerDesligamento = document.getElementById('container-data-desligamento');
+
+            if (situacao && situacao !== 'ATIVO') {
+                if (containerDesligamento) containerDesligamento.classList.remove('hidden');
+                if (dataDesligamento) dataDesligamento.required = true;
+            } else {
+                if (containerDesligamento) containerDesligamento.classList.add('hidden');
+                if (dataDesligamento) dataDesligamento.required = false;
+            }
+        }
+
+        window.onload = function() {
+            toggleDataDesligamento();
+        };
+
         // Bloqueio do botão submit e feedback de "Salvando..."
         document.addEventListener("DOMContentLoaded", function() {
+            toggleDataDesligamento();
             const forms = document.querySelectorAll("form");
             forms.forEach(form => {
                 form.addEventListener("submit", function() {

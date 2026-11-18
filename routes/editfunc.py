@@ -17,74 +17,15 @@ editfunc_bp = Blueprint('editfunc', __name__)
 ##ROTAS#PRA#EDIÇÃO#DE#INFORMAÇÕES#DE#FUNCIONÁRIOS##
 ###################################################
 
-OPCOES_SUBTIPO_VINCULO=[
-    'ADMINISTRATIVO',
-    'OPERACIONAL',
-]
-
-OPCOES_LOTACAO = [
-    '38.842 - COORDENADORIA GERAL REGIONAL - CGR.9',
-    '38.844 - COORDENADORIA ADMINISTRATIVA - CA.9',
-    '38.886 - COORDENADORIA DE CONSERVAÇÃO E OPERAÇÕES VIÁRIAS - CO.9',
-    '38.922 - COORDENADORIA TÉCNICA - CT.9',
-    '38.846 - SERVIÇO DE ADMINISTRAÇÃO DE PESSOAL - SA.9',
-    '38.867 - SERVIÇO DE AQUISIÇÕES E CONTRATAÇÕES -SQ.9',
-    '38.851 - SERVIÇO DE FINANÇAS - SF.9',
-    '38.869 - SERVIÇO DE PATRIMÔNIO, TECNOLOGIA E ATIVIDADES GERAIS - SG.9',
-    '36.759 - SERVIÇO DE FAIXA DE DOMÍNIO, PEDÁGIOS, RADAR E BALANÇA - SR.9',
-    '36.765 - SERVIÇO DE UNIDADE BÁSICA DE ATENDIMENTO - UBA - SB.9',
-    '36.766 - SERVIÇO DE CONSERVAÇÃO DE ROTINA - SC.9',
-    '36.767 - SERVIÇO DE CONSTRUÇÃO - ST.9',
-    '36.768 - SERVIÇO DE PLANEJAMENTO E PROJETOS - SP.9',
-]
-
-OPCOES_AREA = [
-    '38.842 - COORDENADORIA GERAL REGIONAL - CGR.9',
-    '38.844 - COORDENADORIA ADMINISTRATIVA - CA.9',
-    '38.886 - COORDENADORIA DE CONSERVAÇÃO E OPERAÇÕES VIÁRIAS - CO.9',
-    '38.922 - COORDENADORIA TÉCNICA - CT.9',
-    '38.846 - SERVIÇO DE ADMINISTRAÇÃO DE PESSOAL - SA.9',
-    '38.867 - SERVIÇO DE AQUISIÇÕES E CONTRATAÇÕES -SQ.9',
-    '38.851 - SERVIÇO DE FINANÇAS - SF.9',
-    '38.869 - SERVIÇO DE PATRIMÔNIO, TECNOLOGIA E ATIVIDADES GERAIS - SG.9',
-    '36.759 - SERVIÇO DE FAIXA DE DOMÍNIO, PEDÁGIOS, RADAR E BALANÇA - SR.9',
-    '36.765 - SERVIÇO DE UNIDADE BÁSICA DE ATENDIMENTO - UBA - SB.9',
-    '36.766 - SERVIÇO DE CONSERVAÇÃO DE ROTINA - SC.9',
-    '36.767 - SERVIÇO DE CONSTRUÇÃO - ST.9',
-    '36.768 - SERVIÇO DE PLANEJAMENTO E PROJETOS - SP.9',
-    'SERVIÇO EXTERNO',
-]
-
-OPCOES_COORDENADORIA = [
-    '38.842 - COORDENADORIA GERAL REGIONAL - CGR.9',
-    '38.844 - COORDENADORIA ADMINISTRATIVA - CA.9',
-    '38.886 - COORDENADORIA DE CONSERVAÇÃO E OPERAÇÕES VIÁRIAS - CO.9',
-    '38.922 - COORDENADORIA TÉCNICA - CT.9',
-]
-
-OPCOES_TIPO = [
-    'CELETISTA',
-    'EFETIVO',
-    'COMISSIONADO',
-    'CELETISTA ESTÁVEL',
-    'TERCEIRIZADO'
-]
-
-OPCOES_FORMA_INGRESSO = [
-    'Livre Provimento',
-    'Processo Seletivo',
-    'Concurso Público',
-    'Prestador de Serviço',
-]
-
-OPCOES_SITUACAO = [
-    'Ativo',
-    'Inativo - Exoneração',
-    'Inativo - Demissão',
-    'Inativo - Aposentadoria',
-    'Inativo - Término de contrato',
-    'Inativo - Outros',
-]
+from core.constante import (
+    OPCOES_SUBTIPO_VINCULO,
+    OPCOES_LOTACAO,
+    OPCOES_AREA,
+    OPCOES_COORDENADORIA,
+    OPCOES_TIPO,
+    OPCOES_FORMA_INGRESSO,
+    OPCOES_SITUACAO,
+)
 
 SET_SUBTIPO = {normalizar_maiusculo(v) for v in OPCOES_SUBTIPO_VINCULO}
 SET_LOTACAO = {normalizar_maiusculo(v) for v in OPCOES_LOTACAO}
@@ -115,13 +56,9 @@ def editar_funcionario(id):
         flash('Acesso negado: você não tem privilégios administrativos.', 'error')
         return redirect(url_for('painel'))
 
-    func = Funcionario.query.get_or_404(id)
+    func = db.get_or_404(Funcionario, id)
 
     if request.method == 'POST':
-        current_app.logger.warning("INICIO POST")
-        current_app.logger.warning(
-            f"CONTENT_LENGTH={request.content_length}"
-        )
         campos_auditoria = (
             'nome_completo', 'cpf', 'rg', 'vinculo', 'tipo', 'subtipo_vinculo',
             'forma_ingresso', 'matricula', 'cargo_exercicio', 'cargo_origem',
@@ -190,11 +127,14 @@ def editar_funcionario(id):
 
             db.session.commit()
 
-            salvar_foto(
+            foto_path = salvar_foto(
                 current_app.root_path,
                 foto,
                 func.id
             )
+            if foto_path:
+                func.foto_perfil = foto_path
+                db.session.commit()
 
             ix = current_app.config['WHOOSH_IX']
             reindexar_funcionario(ix, func)
@@ -229,7 +169,8 @@ def editar_funcionario(id):
                 recurso_id=str(func.id),
                 detalhes={'motivo': 'erro_salvar', 'error': str(e)},
             )
-            flash(f'Erro ao salvar no banco: {str(e)}', 'error')
+            current_app.logger.warning('Erro ao salvar funcionario %s: %s', id, e)
+            flash('Erro ao salvar no banco. Verifique os dados e tente novamente.', 'error')
             return redirect(url_for('editfunc.editar_funcionario', id=id))
 
     return render_template(
@@ -260,13 +201,15 @@ def remover_foto_funcionario(id):
         flash('Acesso negado: você não tem privilégios administrativos.', 'error')
         return redirect(url_for('painel'))
 
-    func = Funcionario.query.get_or_404(id)
+    func = db.get_or_404(Funcionario, id)
 
     try:
         removida = remover_foto(current_app.root_path, func.id)
 
         session.pop('_flashes', None)
         if removida:
+            func.foto_perfil = None
+            db.session.commit()
             registrar_evento_seguro(
                 'FUNCIONARIO_REMOVER_FOTO_SUCESSO',
                 categoria='cadastro',

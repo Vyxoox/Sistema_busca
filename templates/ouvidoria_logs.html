@@ -303,7 +303,8 @@
     </div>
     <div class="top-actions">
       <a class="btn gray" href="{{ url_for('painel') }}">Voltar ao Painel</a>
-      <a class="btn" href="{{ url_for('ouvidoria.exportar_logs_csv', **filtros) }}">Exportar CSV</a>
+      <a class="btn" href="{{ url_for('ouvidoria.exportar_logs_xlsx', **filtros) }}">Exportar Excel</a>
+      <a class="btn gray" href="{{ url_for('ouvidoria.exportar_logs_csv', **filtros) }}">Exportar CSV</a>
     </div>
   </div>
 

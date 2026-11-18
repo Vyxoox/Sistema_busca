@@ -92,6 +92,7 @@ class TestUsuariosResetSenha(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         alvo = db.session.get(Usuario, self.alvo_id)
+        assert alvo is not None
         self.assertTrue(alvo.check_password("SenhaInicial123"))
 
         self.assertEqual(audit_mock.call_count, 1)
@@ -115,6 +116,7 @@ class TestUsuariosResetSenha(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         alvo = db.session.get(Usuario, self.alvo_id)
+        assert alvo is not None
         self.assertTrue(alvo.check_password("NovaSenha123!"))
         self.assertFalse(alvo.check_password("SenhaInicial123"))
 

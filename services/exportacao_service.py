@@ -2,8 +2,9 @@ def valor_exportacao_resultado(resultado, campo):
     valor = resultado.get(campo, None)
     vinculo = str(resultado.get('vinculo', '')).upper()
 
-    campos_so_servidor = {'matricula'}
+    campos_so_servidor = {'matricula', 'cargo_origem', 'doe_portaria', 'data_inicio'}
     campos_so_terceirizado = {
+        'data_admissao',
         'empresa_contratada',
         'numero_contrato',
         'gestor_contrato',

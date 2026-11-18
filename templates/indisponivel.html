@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sistema temporariamente indisponível</title>
+    <style>
+        body {
+            margin: 0; min-height: 100vh; display: flex;
+            align-items: center; justify-content: center;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f4f6f8; color: #243447;
+        }
+        .card {
+            max-width: 520px; margin: 24px; padding: 40px 44px;
+            background: #fff; border-radius: 10px;
+            box-shadow: 0 2px 14px rgba(20, 40, 70, .12);
+            border-top: 6px solid #e0a800; text-align: center;
+        }
+        h1 { font-size: 1.35rem; margin: 0 0 14px; }
+        p { line-height: 1.55; margin: 10px 0; }
+        .dica { font-size: .85rem; color: #6b7a8d; }
+        code { background: #eef2f6; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Sistema temporariamente indisponível</h1>
+        <p>O banco de dados não está respondendo neste momento, então não
+        foi possível concluir sua solicitação.</p>
+        <p>Tente novamente em alguns instantes. Se o problema persistir,
+        contate a equipe de TI.</p>
+        <p class="dica">Status do serviço: <code>/healthz</code> · <code>/readyz</code></p>
+    </div>
+</body>
+</html>

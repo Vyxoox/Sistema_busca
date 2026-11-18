@@ -105,7 +105,7 @@ class TestUsuariosExcluir(unittest.TestCase):
         self.assertIsNone(usuario)
 
         log = db.session.get(LogAuditoria, self.log_id)
-        self.assertIsNotNone(log)
+        assert log is not None
         self.assertIsNone(log.usuario_id)
         self.assertEqual(log.usuario_login, "admin_teste")
 

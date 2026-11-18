@@ -9,9 +9,9 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
-from flask import current_app, has_request_context, request
+from flask import current_app
 
-from core.extensions import db
+from core.extensions import db, ip_origem_requisicao  # noqa: F401  (re-exportado p/ routes/auth.py)
 from models import LogAuditoria, Usuario
 from services.auditoria_services import registrar_evento_seguro
 
@@ -101,15 +101,6 @@ def _normalizar_ip(valor: str | None) -> str:
 
 def _ip_localhost(ip: str) -> bool:
     return ip in {'127.0.0.1', '::1'}
-
-
-def ip_origem_requisicao() -> str:
-    if not has_request_context():
-        return ''
-    forwarded = request.headers.get('X-Forwarded-For', '')
-    if forwarded:
-        return _normalizar_ip(forwarded)
-    return _normalizar_ip(request.remote_addr)
 
 
 def _extrair_bloqueio_ate_utc(detalhes: str | None) -> datetime | None:
@@ -299,6 +290,15 @@ def _registrar_bloqueio_ip_login(
     if bloqueado:
         return
 
+    # Garante expiracao/bloqueio_minutos sempre definidos: antes, expiracao_utc
+    # chegava como None e expiracao_utc.isoformat() lancava AttributeError,
+    # engolido pelo except generico de avaliar_alertas_evento — o evento
+    # SEC_BLOQUEIO_IP_LOGIN nunca era gravado e nenhum IP era bloqueado.
+    if bloqueio_minutos is None:
+        bloqueio_minutos = config['login_bloqueio_min']
+    if expiracao_utc is None:
+        expiracao_utc = _agora_utc_sem_tz() + timedelta(minutes=bloqueio_minutos)
+
     registrar_evento_seguro(
         'SEC_BLOQUEIO_IP_LOGIN',
         categoria='seguranca',
@@ -453,14 +453,20 @@ def _avaliar_superadmin_fora_horario(evento: LogAuditoria, config: dict[str, Any
     )
 
 
+# Acoes de exportacao de logs monitoradas pelo alerta de exportacao
+# massiva: CSV e Excel carregam o mesmo conteudo de auditoria, logo
+# ambas contam para o mesmo limite por usuario na janela de tempo.
+ACOES_EXPORTACAO_LOGS = ('OUVIDORIA_EXPORTAR_CSV', 'OUVIDORIA_EXPORTAR_XLSX')
+
+
 def _avaliar_exportacao_massiva(evento: LogAuditoria, config: dict[str, Any]) -> None:
-    if evento.acao != 'OUVIDORIA_EXPORTAR_CSV' or evento.status != 'sucesso':
+    if evento.acao not in ACOES_EXPORTACAO_LOGS or evento.status != 'sucesso':
         return
 
     inicio_janela = _agora_utc_sem_tz() - timedelta(minutes=config['export_janela_min'])
     consulta = (
         LogAuditoria.query
-        .filter(LogAuditoria.acao == 'OUVIDORIA_EXPORTAR_CSV')
+        .filter(LogAuditoria.acao.in_(ACOES_EXPORTACAO_LOGS))
         .filter(LogAuditoria.status == 'sucesso')
         .filter(LogAuditoria.criado_em >= inicio_janela)
     )

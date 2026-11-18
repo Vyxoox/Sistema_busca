@@ -78,7 +78,7 @@ def novo_servidor():
                 detalhes={
                     'motivo': 'validacao_allowlist_cadastro',
                     'campo': campo_invalido,
-                    'valor': request.form.get(campo_invalido),
+                    'valor': request.form.get(campo_invalido or ''),
                     'funcionario_vinculo': 'SERVIDOR',
                 },
             )
@@ -108,13 +108,16 @@ def novo_servidor():
             db.session.add(func)
             db.session.flush()
             foto = request.files.get('foto')
-            salvar_foto(current_app.root_path, foto, func.id)
+            foto_path = salvar_foto(current_app.root_path, foto, func.id)
+            if foto_path:
+                func.foto_perfil = foto_path
             db.session.commit()
         except Exception as e:
             db.session.rollback()
             # IntegrityError – duplicata de matrícula, CPF, etc.
-            if 'IntegrityError' in type(e).__name__ or (hasattr(e, 'orig') and 'IntegrityError' in type(e.orig).__name__):
-                msg_erro = str(e.orig) if hasattr(e, 'orig') else str(e)
+            orig = getattr(e, 'orig', None)
+            if 'IntegrityError' in type(e).__name__ or (orig is not None and 'IntegrityError' in type(orig).__name__):
+                msg_erro = str(orig) if orig is not None else str(e)
                 if 'matricula' in msg_erro.lower():
                     flash('Já existe um funcionário com esta matrícula.', 'error')
                 elif 'cpf' in msg_erro.lower():
@@ -205,7 +208,7 @@ def novo_terceirizado():
                 detalhes={
                     'motivo': 'validacao_allowlist_cadastro',
                     'campo': campo_invalido,
-                    'valor': request.form.get(campo_invalido),
+                    'valor': request.form.get(campo_invalido or ''),
                     'funcionario_vinculo': 'TERCEIRIZADO',
                 },
             )
@@ -235,12 +238,15 @@ def novo_terceirizado():
             db.session.add(func)
             db.session.flush()
             foto = request.files.get('foto')
-            salvar_foto(current_app.root_path, foto, func.id)
+            foto_path = salvar_foto(current_app.root_path, foto, func.id)
+            if foto_path:
+                func.foto_perfil = foto_path
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            if 'IntegrityError' in type(e).__name__ or (hasattr(e, 'orig') and 'IntegrityError' in type(e.orig).__name__):
-                msg_erro = str(e.orig) if hasattr(e, 'orig') else str(e)
+            orig = getattr(e, 'orig', None)
+            if 'IntegrityError' in type(e).__name__ or (orig is not None and 'IntegrityError' in type(orig).__name__):
+                msg_erro = str(orig) if orig is not None else str(e)
                 if 'matricula' in msg_erro.lower():
                     flash('Já existe um funcionário com esta matrícula.', 'error')
                 elif 'cpf' in msg_erro.lower():

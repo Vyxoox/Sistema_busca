@@ -103,6 +103,7 @@ class TestUsuariosEditarAcesso(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         alvo = db.session.get(Usuario, self.alvo_id)
+        assert alvo is not None
         self.assertEqual(alvo.perfil, "CA.9")
 
         self.assertEqual(audit_mock.call_args.args[0], "USUARIO_EDITAR_ACESSO_FALHA")
@@ -122,6 +123,7 @@ class TestUsuariosEditarAcesso(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
 
         alvo = db.session.get(Usuario, self.alvo_id)
+        assert alvo is not None
         self.assertEqual(alvo.perfil, "SA.9")
         perms = json.loads(alvo.permissoes or "[]")
         self.assertEqual(sorted(perms), ["ouvidoria_logs", "reindexar"])
@@ -163,6 +165,7 @@ class TestUsuariosEditarAcesso(unittest.TestCase):
         # 1. Garantimos que o usuário alvo no banco é um Superadmin de verdade
         with self.app.app_context():
             u_alvo = db.session.get(Usuario, self.alvo_id)
+            assert u_alvo is not None
             u_alvo.is_superadmin = True
             u_alvo.perfil = 'SA.9'
             db.session.commit()

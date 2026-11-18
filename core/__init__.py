@@ -3,6 +3,8 @@ from .extensions import db, login_manager, csrf
 
 def create_app():
     app = Flask(__name__)
+    app.config["PROPAGATE_EXCEPTIONS"] = True
+    app.config["DEBUG"] = True
     #app.config.from_object(Config)
 
     db.init_app(app)

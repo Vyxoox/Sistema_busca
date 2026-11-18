@@ -17,8 +17,15 @@ venv/
 # Local runtime data
 instance/*.db
 instance/*.db.*
+*.db
+*.db.*
 indice_funcionarios/
 logs/
+
+# Dados com informacoes pessoais (LGPD) - fora do versionamento
+dados/
+documentos/
+static/fotos_funcionarios/
 
 # OS files
 .DS_Store

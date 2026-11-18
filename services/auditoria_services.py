@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from typing import Any
 
 from flask import current_app, has_app_context, has_request_context, request, g, session
@@ -7,7 +8,7 @@ from flask_login import current_user
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from core.extensions import db
+from core.extensions import db, ip_origem_requisicao
 from models import LogAuditoria
 
 MAX_DETALHES = 8000
@@ -44,10 +45,9 @@ def _texto_seguro(valor: Any, limite: int) -> str | None:
 
 
 def _ip_origem() -> str | None:
-    forwarded = request.headers.get('X-Forwarded-For', '')
-    if forwarded:
-        return _texto_seguro(forwarded.split(',')[0], 45)
-    return _texto_seguro(request.remote_addr, 45)
+    # Fonte unica (core.extensions): respeita TRUST_XFF e usa o ultimo hop
+    # do X-Forwarded-For quando atras de proxy confiavel.
+    return _texto_seguro(ip_origem_requisicao(), 45)
 
 
 def _serializar_detalhes(detalhes: dict[str, Any] | None) -> str | None:
@@ -231,10 +231,24 @@ def registrar_evento(
     return evento
 
 
+# Disjuntor: durante uma indisponibilidade do banco, cada tentativa de
+# gravacao paga o timeout de conexao (10s+) e degrada TODAS as
+# requisicoes. Se a ultima falha foi recente, a gravacao e pulada na
+# hora (o backlog volta a ser gravado assim que o banco responder).
+COOLDOWN_FALHA_DB_SEGUNDOS = 30.0
+_ultima_falha_db: list[float] = [0.0]
+
+
 def registrar_evento_seguro(acao: str, **kwargs: Any) -> None:
+    if time.monotonic() - _ultima_falha_db[0] < COOLDOWN_FALHA_DB_SEGUNDOS:
+        if has_app_context():
+            current_app.logger.warning('Auditoria pulada (banco em cooldown): %s', acao)
+        return
+
     try:
         registrar_evento(acao, **kwargs)
     except Exception:
+        _ultima_falha_db[0] = time.monotonic()
         db.session.rollback()
         if has_app_context():
             current_app.logger.exception('Falha ao registrar evento de auditoria: %s', acao)

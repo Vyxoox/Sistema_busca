@@ -11,12 +11,13 @@ def caminho_foto_funcionario(root_path, funcionario_id):
 
 def salvar_foto(root_path, file, funcionario_id):
     if not file or file.filename == '':
-        return
+        return None
 
     pasta = os.path.join(root_path, 'static', 'fotos_funcionarios')
     os.makedirs(pasta, exist_ok=True)
 
     caminho = caminho_foto_funcionario(root_path, funcionario_id)
+    caminho_relativo = f'fotos_funcionarios/{int(funcionario_id)}.jpg'
 
     mime = magic.from_buffer(
         file.read(2048),
@@ -40,6 +41,7 @@ def salvar_foto(root_path, file, funcionario_id):
     img = img.convert("RGB")
     img.thumbnail((500, 500))
     img.save(caminho, "JPEG", quality=85, optimize=True)
+    return caminho_relativo
 
 def remover_foto(root_path, funcionario_id):
     caminho = caminho_foto_funcionario(root_path, funcionario_id)

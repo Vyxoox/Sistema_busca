@@ -155,14 +155,16 @@ class TestCriacaoRotasAllowlist(unittest.TestCase):
 
         with patch("routes.criacao.current_user", admin_fake), \
             patch("routes.criacao.preencher_campos_comuns", side_effect=_preencher_servidor_minimo), \
-            patch("routes.criacao.salvar_foto"), \
+            patch("routes.criacao.salvar_foto", return_value=None), \
             patch("routes.criacao.reindexar_funcionario"), \
             patch("routes.criacao.registrar_evento_seguro") as audit_mock:
             resp = self.client.post("/funcionario/novo/servidor", data=payload, follow_redirects=False)
 
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Funcionario.query.count(), 1)
-        self.assertEqual(Funcionario.query.first().vinculo, "SERVIDOR")
+        funcionario = Funcionario.query.first()
+        assert funcionario is not None
+        self.assertEqual(funcionario.vinculo, "SERVIDOR")
         self.assertEqual(audit_mock.call_args.args[0], "FUNCIONARIO_CADASTRAR_SERVIDOR_SUCESSO")
 
     def test_terceirizado_payload_valido_cadastra(self) -> None:
@@ -171,14 +173,16 @@ class TestCriacaoRotasAllowlist(unittest.TestCase):
 
         with patch("routes.criacao.current_user", admin_fake), \
             patch("routes.criacao.preencher_campos_comuns", side_effect=_preencher_terceirizado_minimo), \
-            patch("routes.criacao.salvar_foto"), \
+            patch("routes.criacao.salvar_foto", return_value=None), \
             patch("routes.criacao.reindexar_funcionario"), \
             patch("routes.criacao.registrar_evento_seguro") as audit_mock:
             resp = self.client.post("/funcionario/novo/terceirizado", data=payload, follow_redirects=False)
 
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Funcionario.query.count(), 1)
-        self.assertEqual(Funcionario.query.first().vinculo, "TERCEIRIZADO")
+        funcionario = Funcionario.query.first()
+        assert funcionario is not None
+        self.assertEqual(funcionario.vinculo, "TERCEIRIZADO")
         self.assertEqual(audit_mock.call_args.args[0], "FUNCIONARIO_CADASTRAR_TERCEIRIZADO_SUCESSO")
 
 if __name__ == "__main__":

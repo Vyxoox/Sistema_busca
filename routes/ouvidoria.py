@@ -1,13 +1,16 @@
 import json
 import csv
 import io
+import os
 from datetime import datetime, time, UTC
 from zoneinfo import ZoneInfo
 from sqlalchemy import func, or_
 
-from flask import Blueprint, render_template, request, send_file, url_for, flash, redirect
-from flask_login import login_required
+import xlsxwriter
+from flask import Blueprint, render_template, request, send_file, url_for, flash, redirect, current_app
+from flask_login import login_required, current_user
 
+from core import db
 from core.audit_policy import audit_event
 from core.authz import superadmin_required
 from models import LogAuditoria
@@ -16,6 +19,10 @@ from services.alertas_seguranca import desbloquear_ip_login_superadmin, obter_bl
 
 ouvidoria_bp = Blueprint('ouvidoria', __name__)
 FUSO_LOCAL = ZoneInfo('America/Sao_Paulo')
+
+# Teto de linhas nas exportacoes de logs (CSV e XLSX) — protege o
+# servidor de exports gigantes e mantem os dois formatos equivalentes.
+LIMITE_EXPORTACAO_LOGS = 5000
 
 ACOES_DESCRICAO = {
     'AUTH_LOGIN_SUCESSO': 'Login realizado',
@@ -34,6 +41,7 @@ ACOES_DESCRICAO = {
     'OUVIDORIA_VISUALIZAR_LOGS': 'Visualização de logs de ouvidoria',
     'OUVIDORIA_VISUALIZAR_LOG_DETALHE': 'Visualização detalhada de log de ouvidoria',
     'OUVIDORIA_EXPORTAR_CSV': 'Exportação de logs em CSV',
+    'OUVIDORIA_EXPORTAR_XLSX': 'Exportação de logs em Excel',
     'USUARIOS_LISTAR': 'Listagem de administradores',
     'USUARIO_CRIAR_ADMIN_SUCESSO': 'Criação de administrador',
     'USUARIO_CRIAR_ADMIN_FALHA': 'Falha ao criar administrador',
@@ -177,7 +185,7 @@ def _ips_bloqueados_atualmente(limite_eventos: int = 5000) -> list[str]:
 
     return sorted([ip for ip, bloqueado in estado_por_ip.items() if bloqueado])
 
-def _consulta_logs():
+def _consulta_logs(ips_bloqueados_conhecidos: list[str] | None = None):
     consulta = LogAuditoria.query
 
     q = (request.args.get('q') or '').strip()
@@ -227,7 +235,11 @@ def _consulta_logs():
         consulta = consulta.filter(LogAuditoria.criado_em <= fim_utc)
 
     if somente_bloqueados:
-        ips_bloqueados = _ips_bloqueados_atualmente()
+        ips_bloqueados = (
+            ips_bloqueados_conhecidos
+            if ips_bloqueados_conhecidos is not None
+            else _ips_bloqueados_atualmente()
+        )
         if ips_bloqueados:
             consulta = consulta.filter(LogAuditoria.recurso_id.in_(ips_bloqueados))
         else:
@@ -462,6 +474,18 @@ def _retorno_logs_seguro(valor: str | None) -> str:
     return ''
 
 
+# Mitigacao de CSV/Excel formula injection (OWASP): celulas que comecam com
+# estes caracteres sao interpretadas como formula pelo Excel/LibreOffice.
+_PREFIXES_FORMULA_CSV = ('=', '+', '-', '@', '\t', '\r')
+
+
+def _celula_csv_segura(valor) -> str:
+    texto = '' if valor is None else str(valor)
+    if texto.startswith(_PREFIXES_FORMULA_CSV):
+        return f"'{texto}"
+    return texto
+
+
 @ouvidoria_bp.route('/ouvidoria/logs')
 @login_required
 @superadmin_required
@@ -470,9 +494,9 @@ def logs_ouvidoria():
     page = max(request.args.get('page', 1, type=int), 1)
     per_page = min(max(request.args.get('per_page', 50, type=int), 10), 200)
 
-    consulta, filtros = _consulta_logs()
     ips_bloqueados_ativos = _ips_bloqueados_atualmente()
     total_ips_bloqueados = len(ips_bloqueados_ativos)
+    consulta, filtros = _consulta_logs(ips_bloqueados_conhecidos=ips_bloqueados_ativos)
 
     total = consulta.count()
     total_pages = max((total + per_page - 1) // per_page, 1)
@@ -556,7 +580,7 @@ def logs_ouvidoria():
 @superadmin_required
 @audit_event()
 def detalhe_log_ouvidoria(log_id: int):
-    log = LogAuditoria.query.get_or_404(log_id)
+    log = db.get_or_404(LogAuditoria, log_id)
     retorno = _retorno_logs_seguro(request.args.get('retorno')) or url_for('ouvidoria.logs_ouvidoria')
     detalhes_obj = parse_detalhes_para_objeto(log.detalhes)
     ip_alvo = ''
@@ -600,7 +624,7 @@ def detalhe_log_ouvidoria(log_id: int):
 @audit_event()
 def exportar_logs_csv():
     consulta, filtros = _consulta_logs()
-    logs = consulta.order_by(LogAuditoria.criado_em.desc()).limit(5000).all()
+    logs = consulta.order_by(LogAuditoria.criado_em.desc()).limit(LIMITE_EXPORTACAO_LOGS).all()
 
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=';')
@@ -619,16 +643,16 @@ def exportar_logs_csv():
 
     for log in logs:
         writer.writerow([
-            formatar_datahora_local(log.criado_em),
-            log.usuario_login or '',
-            log.acao or '',
-            log.categoria or '',
-            log.status or '',
-            log.recurso or '',
-            log.recurso_id or '',
-            log.ip_origem or '',
-            log.rota or '',
-            log.detalhes or '',
+            _celula_csv_segura(formatar_datahora_local(log.criado_em)),
+            _celula_csv_segura(log.usuario_login or ''),
+            _celula_csv_segura(log.acao or ''),
+            _celula_csv_segura(log.categoria or ''),
+            _celula_csv_segura(log.status or ''),
+            _celula_csv_segura(log.recurso or ''),
+            _celula_csv_segura(log.recurso_id or ''),
+            _celula_csv_segura(log.ip_origem or ''),
+            _celula_csv_segura(log.rota or ''),
+            _celula_csv_segura(log.detalhes or ''),
         ])
 
     registrar_evento_seguro(
@@ -647,6 +671,282 @@ def exportar_logs_csv():
         as_attachment=True,
         download_name=f'logs_ouvidoria_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
         mimetype='text/csv',
+    )
+
+
+# ============================================================
+# Exportacao XLSX dos logs — mesmo visual do relatorio de
+# funcionarios (routes/planilha.py): titulo com metadados,
+# zebra, data/hora como celula real, status colorido e coluna
+# de detalhes legivel. O CSV continua disponivel para uso
+# automatizado (mesmos dados, mesmos filtros).
+# ============================================================
+
+# Paleta espelhada de routes/planilha.py (identidade visual unica
+# dos relatorios exportados; se mudar la, mude aqui tambem).
+COR_CABECALHO_LOGS = '#2F5597'
+COR_ZEBRA_LOGS = '#F5F7FA'
+COR_SUBTITULO_LOGS = '#7F7F7F'
+COR_STATUS_SUCESSO = '#006100'
+COR_STATUS_FALHA = '#9C0006'
+
+# (atributo do LogAuditoria, rotulo, largura minima, largura maxima)
+COLUNAS_LOGS_XLSX = [
+    ('id', 'ID', 6, 10),
+    ('criado_em', 'DATA/HORA', 17, 18),
+    ('usuario_login', 'USUÁRIO', 12, 20),
+    ('acao', 'AÇÃO', 14, 40),
+    ('categoria', 'CATEGORIA', 12, 16),
+    ('status', 'STATUS', 10, 12),
+    ('recurso', 'RECURSO', 14, 26),
+    ('recurso_id', 'ID DO RECURSO', 12, 16),
+    ('ip_origem', 'IP DE ORIGEM', 13, 16),
+    ('rota', 'ROTA', 14, 30),
+    ('detalhes', 'DETALHES', 80, 100),
+]
+
+COLUNAS_CENTRALIZADAS_LOGS = {
+    'ID', 'DATA/HORA', 'USUÁRIO', 'CATEGORIA', 'STATUS',
+    'ID DO RECURSO', 'IP DE ORIGEM',
+}
+
+
+def _valor_texto_log(log, campo):
+    if campo == 'detalhes':
+        return formatar_json_pretty(parse_detalhes_para_objeto(getattr(log, 'detalhes', None)))
+    valor = getattr(log, campo, None)
+    if valor is None:
+        return ''
+    return str(valor).strip()
+
+
+def _largura_coluna_log(logs, campo, minima, maxima):
+    if campo == 'criado_em':
+        # celula de data/hora: exibicao fixa em dd/mm/aaaa hh:mm
+        return minima
+    maior = 0
+    for log in logs:
+        maior = max(maior, len(_valor_texto_log(log, campo)))
+    return min(max(maior + 2, minima), maxima)
+
+
+def _escrever_logs_xlsx(ws, workbook, logs, meta):
+    """Escreve a planilha de logs (titulo, metadados e tabela).
+
+    Funcao pura de apresentacao (sem request/current_app), no mesmo
+    esquema do _escrever_relatorio_xlsx do relatorio de funcionarios.
+    """
+    total_colunas = len(COLUNAS_LOGS_XLSX)
+    linha_titulo = 0
+    linha_meta = 1
+    linha_cabecalho = 3
+    primeira_linha_dados = 4
+
+    titulo_fmt = workbook.add_format({
+        'font_name': 'Calibri', 'font_size': 16, 'bold': True,
+        'font_color': COR_CABECALHO_LOGS, 'valign': 'vcenter',
+    })
+    meta_fmt = workbook.add_format({
+        'font_name': 'Calibri', 'font_size': 9, 'italic': True,
+        'font_color': COR_SUBTITULO_LOGS, 'valign': 'vcenter',
+        'bottom': 1, 'bottom_color': COR_CABECALHO_LOGS,
+    })
+    cabecalho_fmt = workbook.add_format({
+        'font_name': 'Calibri', 'font_size': 10, 'bold': True,
+        'bg_color': COR_CABECALHO_LOGS, 'font_color': 'white',
+        'align': 'center', 'valign': 'vcenter', 'text_wrap': True,
+        'border': 1,
+    })
+
+    base_celula = {
+        'font_name': 'Calibri', 'font_size': 9,
+        'border': 1, 'text_wrap': True, 'valign': 'vcenter',
+    }
+
+    def _formato(centralizada, zebra, data=False):
+        conf = dict(base_celula)
+        conf['align'] = 'center' if centralizada else 'left'
+        if zebra:
+            conf['bg_color'] = COR_ZEBRA_LOGS
+        if data:
+            conf['num_format'] = 'dd/mm/yyyy hh:mm'
+        return workbook.add_format(conf)
+
+    formatos = {}
+    for centralizada in (False, True):
+        for zebra in (False, True):
+            formatos[(centralizada, zebra)] = _formato(centralizada, zebra)
+            formatos[(centralizada, zebra, 'data')] = _formato(centralizada, zebra, data=True)
+
+    cache_status = {}
+
+    def _formato_status(valor, zebra):
+        cor = COR_STATUS_SUCESSO if valor == 'sucesso' else COR_STATUS_FALHA
+        chave = (cor, zebra)
+        if chave not in cache_status:
+            conf = dict(base_celula)
+            conf.update({'align': 'center', 'bold': True, 'font_color': cor})
+            if zebra:
+                conf['bg_color'] = COR_ZEBRA_LOGS
+            cache_status[chave] = workbook.add_format(conf)
+        return cache_status[chave]
+
+    # ---------------- titulo e metadados ----------------
+    partes = [f"Emitido em {meta['emitido_em']}"]
+    if meta.get('usuario'):
+        partes.append(f"por {meta['usuario']}")
+    filtros = [str(item) for item in (meta.get('filtros') or [])]
+    resumo_filtros = ' · '.join(filtros) if filtros else 'nenhum (todos os registros)'
+    partes.append(f'Filtros: {resumo_filtros}')
+    total_filtro = int(meta.get('total_filtro') or 0)
+    total_linhas = int(meta.get('total_linhas') or len(logs))
+    if total_filtro > total_linhas:
+        partes.append(
+            f'Total no filtro: {total_filtro} · Exportando os {total_linhas} '
+            f"mais recentes (limite de {int(meta.get('limite') or 0)})"
+        )
+    else:
+        partes.append(f"Total: {total_linhas} registro{'s' if total_linhas != 1 else ''}")
+
+    ws.merge_range(linha_titulo, 0, linha_titulo, total_colunas - 1,
+                   'LOGS DE OUVIDORIA E SEGURANÇA', titulo_fmt)
+    ws.set_row(linha_titulo, 30)
+
+    ws.merge_range(linha_meta, 0, linha_meta, total_colunas - 1,
+                   ' · '.join(partes), meta_fmt)
+    ws.set_row(linha_meta, 18)
+    ws.set_row(2, 6)
+
+    # ---------------- cabecalho da tabela ----------------
+    for coluna, (_, rotulo, _, _) in enumerate(COLUNAS_LOGS_XLSX):
+        ws.write(linha_cabecalho, coluna, rotulo, cabecalho_fmt)
+    ws.set_row(linha_cabecalho, 30)
+
+    # ---------------- dados ----------------
+    for indice, log in enumerate(logs):
+        num_linha = primeira_linha_dados + indice
+        zebra = indice % 2 == 1
+        for coluna, (campo, rotulo, _, _) in enumerate(COLUNAS_LOGS_XLSX):
+            centralizada = rotulo in COLUNAS_CENTRALIZADAS_LOGS
+
+            if campo == 'criado_em':
+                momento = _utc_para_local(getattr(log, 'criado_em', None))
+                if momento is not None:
+                    ws.write_datetime(
+                        num_linha, coluna, momento.replace(tzinfo=None),
+                        formatos[(centralizada, zebra, 'data')],
+                    )
+                else:
+                    ws.write(num_linha, coluna, '', formatos[(centralizada, zebra)])
+                continue
+
+            valor = _valor_texto_log(log, campo)
+            if campo == 'status' and valor in ('sucesso', 'falha'):
+                ws.write(num_linha, coluna, valor, _formato_status(valor, zebra))
+            elif campo == 'id' and valor != '':
+                ws.write_number(num_linha, coluna, int(valor),
+                                formatos[(centralizada, zebra)])
+            else:
+                ws.write(num_linha, coluna, valor, formatos[(centralizada, zebra)])
+        # Sem set_row nas linhas de dados: altura automatica — o Excel
+        # expande a linha ate o JSON de DETALHES inteiro ficar visivel.
+
+    # ---------------- larguras ----------------
+    for coluna, (campo, _, minima, maxima) in enumerate(COLUNAS_LOGS_XLSX):
+        ws.set_column(coluna, coluna,
+                      _largura_coluna_log(logs, campo, minima, maxima))
+
+    # ---------------- navegacao ----------------
+    ws.freeze_panes(primeira_linha_dados, 0)
+    ws.autofilter(linha_cabecalho, 0, linha_cabecalho + len(logs),
+                  total_colunas - 1)
+    # no papel repete o CABECALHO da tabela no topo de cada pagina
+    ws.repeat_rows(linha_cabecalho)
+    ws.hide_gridlines(2)
+    # ID do recurso numerico segue texto — sem triangulo verde no Excel
+    ws.ignore_errors({'number_stored_as_text': True})
+
+    # ---------------- impressao ----------------
+    ws.set_landscape()
+    ws.fit_to_pages(1, 0)
+    ws.center_horizontally()
+    ws.set_paper(9)  # A4
+    ws.set_margins(0.3, 0.5, 1.2, 0.5)
+
+    logo_esquerda = meta.get('logo_esquerda')
+    logo_direita = meta.get('logo_direita')
+    if (logo_esquerda and logo_direita
+            and os.path.isfile(logo_esquerda) and os.path.isfile(logo_direita)):
+        ws.set_header(
+            '&L&G'
+            '&C&"Calibri,Bold"&12 COORDENADORIA GERAL REGIONAL - CGR.9'
+            '&R&G',
+            {
+                'image_left': logo_esquerda,
+                'image_right': logo_direita,
+                'image_left_scale': 0.05,
+                'image_right_scale': 0.4,
+                'image_right_margin_right': 0.6,
+                'image_right_margin_top': 0.6,
+                'image_left_margin': 2.5,
+            },
+        )
+
+    ws.set_footer(
+        '&LPágina &P de &N'
+        '&CEmitido em: &D'
+        f'&RTotal: {total_linhas}',
+        {'margin': 0.2},
+    )
+
+
+@ouvidoria_bp.route('/ouvidoria/logs/exportar.xlsx')
+@login_required
+@superadmin_required
+@audit_event()
+def exportar_logs_xlsx():
+    consulta, filtros = _consulta_logs()
+    total_filtro = consulta.count()
+    logs = (
+        consulta.order_by(LogAuditoria.criado_em.desc())
+        .limit(LIMITE_EXPORTACAO_LOGS)
+        .all()
+    )
+
+    meta = {
+        'emitido_em': datetime.now(FUSO_LOCAL).strftime('%d/%m/%Y %H:%M'),
+        'usuario': str(getattr(current_user, 'login', '') or ''),
+        'filtros': _filtros_ativos(filtros),
+        'total_filtro': total_filtro,
+        'total_linhas': len(logs),
+        'limite': LIMITE_EXPORTACAO_LOGS,
+        'logo_esquerda': os.path.join(current_app.root_path, 'static', 'imagen2.jpg'),
+        'logo_direita': os.path.join(current_app.root_path, 'static', 'Imagem1.png'),
+    }
+
+    buffer = io.BytesIO()
+    workbook = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    ws = workbook.add_worksheet('LOGS')
+    _escrever_logs_xlsx(ws, workbook, logs, meta)
+    workbook.close()
+    buffer.seek(0)
+
+    registrar_evento_seguro(
+        'OUVIDORIA_EXPORTAR_XLSX',
+        categoria='ouvidoria',
+        recurso='logs_auditoria',
+        detalhes={
+            'filtros': filtros,
+            'total_linhas': len(logs),
+            'total_filtro': total_filtro,
+        },
+    )
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f'logs_ouvidoria_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
 
 @ouvidoria_bp.route('/ouvidoria/ip/desbloquear', methods=['POST'])

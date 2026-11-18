@@ -236,6 +236,11 @@
             const blocoServidor = document.getElementById('bloco-servidor');
             const blocoTerceirizado = document.getElementById('bloco-terceirizado');
 
+            const containerCargoOrigem = document.getElementById('container-cargo-origem');
+            const containerDoePortaria = document.getElementById('container-doe-portaria');
+            const containerDataInicio = document.getElementById('container-data-inicio');
+            const containerDataAdmissao = document.getElementById('container-data-admissao');
+
             const matricula = document.getElementById('matricula');
             const empresaContratada = document.getElementById('empresa_contratada');
             const numeroContrato = document.getElementById('numero_contrato');
@@ -248,6 +253,11 @@
                 blocoServidor.classList.remove('hidden');
                 blocoTerceirizado.classList.add('hidden');
 
+                if (containerCargoOrigem) containerCargoOrigem.classList.remove('hidden');
+                if (containerDoePortaria) containerDoePortaria.classList.remove('hidden');
+                if (containerDataInicio) containerDataInicio.classList.remove('hidden');
+                if (containerDataAdmissao) containerDataAdmissao.classList.add('hidden');
+
                 matricula.required = true;
                 empresaContratada.required = false;
                 numeroContrato.required = false;
@@ -258,6 +268,11 @@
             } else {
                 blocoServidor.classList.add('hidden');
                 blocoTerceirizado.classList.remove('hidden');
+
+                if (containerCargoOrigem) containerCargoOrigem.classList.add('hidden');
+                if (containerDoePortaria) containerDoePortaria.classList.add('hidden');
+                if (containerDataInicio) containerDataInicio.classList.add('hidden');
+                if (containerDataAdmissao) containerDataAdmissao.classList.remove('hidden');
 
                 matricula.required = false;
                 empresaContratada.required = true;
@@ -272,10 +287,13 @@
         function toggleDataDesligamento() {
             const situacao = document.getElementById('situacao').value.toUpperCase();
             const dataDesligamento = document.getElementById('data_desligamento');
+            const containerDesligamento = document.getElementById('container-data-desligamento');
 
             if (situacao && situacao !== 'ATIVO') {
+                if (containerDesligamento) containerDesligamento.classList.remove('hidden');
                 dataDesligamento.required = true;
             } else {
+                if (containerDesligamento) containerDesligamento.classList.add('hidden');
                 dataDesligamento.required = false;
             }
         }
@@ -440,7 +458,7 @@
                 <div class="form-grid">
                     <div>
                         <label>CPF*</label>
-                        <input type="text" id="cpf" name="cpf" value="{{ func.cpf if func else '' }}" class="{% if errors and 'cpf' in errors %}input-error{% endif %}" required oninput="mascaraCPF(this)">
+                        <input type="text" id="cpf" name="cpf" value="{{ func.cpf if func else '' }}" class="{% if errors and 'cpf' in errors %}input-error{% endif %}" oninput="mascaraCPF(this)">
 {{ ui.field_error('cpf', errors) }}
                     </div>
 
@@ -490,6 +508,12 @@
                 </div>
 
                 <div>
+                    <label>CONTATO DE EMERGÊNCIA</label>
+                    <input type="text" name="contato_emergencia" value="{{ func.contato_emergencia if func else '' }}" class="{% if errors and 'contato_emergencia' in errors %}input-error{% endif %}">
+{{ ui.field_error('contato_emergencia', errors) }}
+                </div>
+
+                <div>
                     <label>EMAIL PESSOAL</label>
                     <input type="email" name="email_pessoal" value="{{ func.email_pessoal if func else '' }}" class="{% if errors and 'email_pessoal' in errors %}input-error{% endif %}">
 {{ ui.field_error('email_pessoal', errors) }}
@@ -529,7 +553,7 @@
                     <select name="forma_ingresso" class="{% if errors and 'forma_ingresso' in errors %}input-error{% endif %}" required>
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_forma_ingresso %}
-                      <option value="{{ opcao }}" {% if func and (func.forma_ingresso or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      <option value="{{ opcao }}" {% if func and (func.forma_ingresso or '')|upper == opcao|upper %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
 {{ ui.field_error('forma_ingresso', errors) }}
@@ -545,7 +569,7 @@
                     <input type="text" name="cargo_exercicio" value="{{ func.cargo_exercicio if func else '' }}">
                 </div>
 
-                <div>
+                <div id="container-cargo-origem">
                     <label>CARGO DE ORIGEM</label>
                     <input type="text" name="cargo_origem" value="{{ func.cargo_origem if func else '' }}">
                 </div>
@@ -583,7 +607,7 @@
 {{ ui.field_error('coordenadoria', errors) }}
                 </div>
 
-                <div>
+                <div id="container-doe-portaria">
                     <label>DOE / PORTARIA</label>
                     <input type="text" name="doe_portaria" value="{{ func.doe_portaria if func else '' }}">
                 </div>
@@ -595,29 +619,26 @@
                     <label>DATA DE INGRESSO NO DER</label>
                     <input type="date" name="data_ingresso_der" value="{{ func.data_ingresso_der if func and func.data_ingresso_der else '' }}">
                 </div>
-
-                <div>
+                <div id="container-data-inicio">
                     <label>DATA DE INÍCIO</label>
                     <input type="date" name="data_inicio" value="{{ func.data_inicio if func and func.data_inicio else '' }}">
                 </div>
-
-                <div>
+                <div id="container-data-admissao">
                     <label>DATA DE ADMISSÃO</label>
                     <input type="date" name="data_admissao" value="{{ func.data_admissao if func and func.data_admissao else '' }}">
                 </div>
-
                 <div>
                     <label>SITUAÇÃO*</label>
                     <select name="situacao" id="situacao" class="{% if errors and 'situacao' in errors %}input-error{% endif %}" required onchange="toggleDataDesligamento()">
                       <option value="">Selecione</option>
                       {% for opcao in opcoes_situacao %}
-                      <option value="{{ opcao }}" {% if func and (func.situacao or '') == opcao %}selected{% endif %}>{{ opcao }}</option>
+                      <option value="{{ opcao }}" {% if func and (func.situacao or '')|upper == opcao|upper %}selected{% endif %}>{{ opcao }}</option>
                       {% endfor %}
                     </select>
 {{ ui.field_error('situacao', errors) }}
                 </div>
 
-                <div>
+                <div id="container-data-desligamento">
                     <label>DATA DE DESLIGAMENTO</label>
                     <input type="date" id="data_desligamento" name="data_desligamento" value="{{ func.data_desligamento if func and func.data_desligamento else '' }}">
                 </div>

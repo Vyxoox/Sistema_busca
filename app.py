@@ -1,5 +1,6 @@
 import os
 import re
+import secrets
 import shutil
 import logging
 
@@ -11,19 +12,20 @@ from datetime import datetime, date, UTC
 
 import pandas as pd
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, flash, g, jsonify, current_app
+from flask import Flask, render_template, request, redirect, url_for, flash, g, jsonify, current_app, make_response
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_, text
+from sqlalchemy import event, func, or_, text
+from sqlalchemy.exc import DBAPIError
 from whoosh.index import open_dir, create_in
 from whoosh.query import Every
-from time import perf_counter
+from time import perf_counter, sleep
 from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 from core.authz import superadmin_required
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
-from core.extensions import db, login_manager, csrf, limiter
+from core.extensions import db, login_manager, csrf, limiter, ip_origem_requisicao
 from models import Usuario, Funcionario
 from core.config import Config
 from core.schema import schema
@@ -52,20 +54,31 @@ APP_START_TIME = datetime.now(UTC)
 
 # Logging com rotação por categoria (aplicação/segurança/auditoria/erros)
 setup_logging(app)
-logging.getLogger("observabilidade").info("TESTE OBSERVABILIDADE")
-logging.getLogger("auditoria").info("TESTE AUDITORIA")
-logging.getLogger("seguranca").info("TESTE SEGURANCA")
-logging.getLogger("erros").error("TESTE ERRO")
-app.logger.info("TESTE APP LOGGER")
 
 db.init_app(app)
+
+# Timeout de EXECUCAO de query (DB_STATEMENT_TIMEOUT, padrao 300s):
+# aplicado pelo PROPRIO pyodbc a cada statement via
+# SQLSetStmtAttr(SQL_ATTR_QUERY_TIMEOUT) — verificado no fonte do pyodbc
+# 5.3.0 (cursor.cpp). NAO confundir com attrs_before/connect_args, que so
+# aceitam atributos de CONEXAO: tentar definir query timeout ali derruba
+# todas as conexoes com HY092 (identificador de atributo invalido).
+def _aplicar_timeout_query(dbapi_conn: Any, _registro: Any) -> None:
+    timeout_s = int(app.config.get('DB_STATEMENT_TIMEOUT', 300))
+    if timeout_s > 0 and type(dbapi_conn).__module__ == 'pyodbc':
+        dbapi_conn.timeout = timeout_s
+
+
+if str(app.config.get('SQLALCHEMY_DATABASE_URI', '')).startswith('mssql'):
+    with app.app_context():
+        event.listens_for(db.engine, 'connect')(_aplicar_timeout_query)
 
 login_manager.init_app(app)
 csrf.init_app(app)
 
 limiter.init_app(app)
 
-login_manager.login_view = 'auth.login'
+login_manager.login_view = 'auth.login'  # type: ignore[assignment]  # stub do flask-login tipa o atributo como None
 login_manager.login_message = 'É necessário fazer login para acessar esta página.'
 login_manager.login_message_category = 'error'
 
@@ -103,14 +116,18 @@ EMAIL_SEDE_PADRAO = os.getenv('EMAIL_SEDE_PADRAO', 'sede@der.sp.gov.br')
 # ============================================
 # CONFIGURAÇÃO DO WHOOSH
 # ============================================
-CAMINHO_INDICE = "indice_funcionarios"
+CAMINHO_INDICE = os.path.abspath("indice_funcionarios")
 if not os.path.exists(CAMINHO_INDICE):
     os.mkdir(CAMINHO_INDICE)
     ix = create_in(CAMINHO_INDICE, schema)
 else:
+    print("Pasta atual:", os.getcwd())
+    print("Índice absoluto:", CAMINHO_INDICE)
     ix = open_dir(CAMINHO_INDICE)
 
 app.config['WHOOSH_IX'] = ix
+with ix.searcher() as s:
+    print("APP START DOCS =", s.doc_count())
 
 # ============================================
 # FUNÇÕES AUXILIARES
@@ -140,7 +157,11 @@ app.config['AUDIT_RETENCAO_DIAS_SEGURANCA'] = _env_int('AUDIT_RETENCAO_DIAS_SEGU
 app.config['AUDIT_RETENCAO_DIAS_ALERTA'] = _env_int('AUDIT_RETENCAO_DIAS_ALERTA', 3650)
 
 _METRICAS_LOCK = Lock()
-_METRICAS = Counter()
+# _METRICAS acumula contadores (int) e latencia (float, em ms). Counter e
+# tipado no typeshed com valores int, entao a anotacao declarada e
+# dict[str, float] e a atribuicao do construtor recebe suppressao pontual.
+# Em runtime Counter (chave ausente = 0) e mantido — nenhuma mudanca.
+_METRICAS: dict[str, float] = Counter()  # type: ignore[assignment]
 _LATENCIA_BUCKETS_MS = (50, 100, 250, 500, 1000, 2000, 5000)
 _LATENCIA_HIST = Counter()
 
@@ -250,17 +271,17 @@ def _normalizar_json_auditoria(valor: Any, profundidade: int = 0) -> Any:
 
     if isinstance(valor, list):
         itens = valor[:AUDITORIA_MAX_ITENS_LISTA]
-        saida = [_normalizar_json_auditoria(item, profundidade + 1) for item in itens]
+        lista_saida: list[Any] = [_normalizar_json_auditoria(item, profundidade + 1) for item in itens]
         if len(valor) > AUDITORIA_MAX_ITENS_LISTA:
-            saida.append(f'... +{len(valor) - AUDITORIA_MAX_ITENS_LISTA} itens')
-        return saida
+            lista_saida.append(f'... +{len(valor) - AUDITORIA_MAX_ITENS_LISTA} itens')
+        return lista_saida
 
     if isinstance(valor, tuple):
         itens = list(valor[:AUDITORIA_MAX_ITENS_LISTA])
-        saida = [_normalizar_json_auditoria(item, profundidade + 1) for item in itens]
+        lista_saida: list[Any] = [_normalizar_json_auditoria(item, profundidade + 1) for item in itens]
         if len(valor) > AUDITORIA_MAX_ITENS_LISTA:
-            saida.append(f'... +{len(valor) - AUDITORIA_MAX_ITENS_LISTA} itens')
-        return saida
+            lista_saida.append(f'... +{len(valor) - AUDITORIA_MAX_ITENS_LISTA} itens')
+        return lista_saida
 
     if isinstance(valor, (str, int, float, bool)) or valor is None:
         if isinstance(valor, str):
@@ -646,7 +667,10 @@ def limite_excedido(e):
 
     registrar_evento_seguro(
         "APP_LIMITE_EXCEDIDO",
-        categoria="SEGURANÇA",
+        # 'seguranca' (minusculo, sem acento): o restante do sistema e a
+        # politica de retencao (1825 dias) usam exatamente esse valor;
+        # "SEGURANÇA" caia na regra geral (365 dias) e quebrava filtros.
+        categoria="seguranca",
         status="falha",
         recurso=request.path,
         detalhes={
@@ -704,6 +728,25 @@ def erro_global(e):
     )
 
     raise e
+
+@app.errorhandler(DBAPIError)
+def banco_indisponivel(e):
+    """Erro no acesso ao banco em execucao (operacional, interface ou
+    configuracao de driver): pagina amigavel 503 no lugar do 500 criptico
+    do waitress. O traceback completo fica no log do servidor."""
+    g.erro_ja_registrado = True
+    current_app.logger.exception(
+        'Banco de dados indisponivel: %s %s', request.method, request.path
+    )
+
+    # Endpoints de observabilidade respondem JSON, nao HTML
+    if request.path in AUDITORIA_ROTAS_IGNORADAS:
+        return jsonify({'status': 'not_ready', 'database': 'down'}), 503
+
+    resposta = make_response(render_template('indisponivel.html'), 503)
+    resposta.headers['Retry-After'] = '30'
+    return resposta
+
 # ============================================
 # FILTROS JINJA2
 # ============================================
@@ -787,7 +830,11 @@ def reindexar_todos():
         ix = create_in(CAMINHO_INDICE, schema)
     except Exception as e:
         print(f"⚠️ Erro ao remover pasta do índice: {e}")
+        print("Pasta atual:", os.getcwd())
+        print("Índice:", os.path.abspath(CAMINHO_INDICE))
         ix = open_dir(CAMINHO_INDICE)
+        with ix.searcher() as s:
+            print("Whoosh abriu com", s.doc_count(), "documentos")
         writer = ix.writer()
         writer.delete_by_query(Every())
         writer.commit()
@@ -845,16 +892,82 @@ def reindexar_todos():
     app.config['WHOOSH_IX'] = ix
 
 # ============================================
+# GATE DE BOOT — CONEXAO COM O BANCO
+# ============================================
+def _verificar_conexao_banco(tentativas: int = 3, pausa_segundos: float = 2.0) -> bool:
+    """Confirma que o banco responde antes de subir o servico.
+
+    Sem este gate, o bootstrap engole a falha de conexao e o servidor
+    fica no ar "meio vivo": toda tela que usa o banco estoura erro e
+    cada requisicao paga o timeout de conexao (10s+).
+
+    Comportamento com DB_BOOT_CHECK=true (padrao):
+      - producao (APP_ENV=production): banco inacessivel apos as
+        tentativas -> ABORTA o start com mensagem clara (fail fast).
+      - desenvolvimento: alerta no log e segue (modo degradado; telas
+        que usam o banco retornam a pagina 503 amigavel).
+    DB_BOOT_CHECK=false desativa a verificacao (usar com cautela).
+    """
+    if os.getenv('DB_BOOT_CHECK', 'true').strip().lower() == 'false':
+        return True
+
+    ultima_exc: Exception | None = None
+    for tentativa in range(1, tentativas + 1):
+        try:
+            with db.engine.connect() as conexao:
+                conexao.execute(text('SELECT 1'))
+            return True
+        except Exception as exc:
+            ultima_exc = exc
+            app.logger.error(
+                'Tentativa %d/%d de conexao com o banco falhou: %s',
+                tentativa, tentativas, exc,
+            )
+            if tentativa < tentativas:
+                sleep(pausa_segundos)
+
+    url_mascarada = re.sub(r'//[^@/\s]+@', '//***@', str(app.config.get('SQLALCHEMY_DATABASE_URI', '')))
+    app.logger.critical(
+        'BANCO INACESSIVEL apos %d tentativa(s) (%s: %s). Corrija o '
+        'DATABASE_URL no .env (host/credenciais) ou defina DB_BOOT_CHECK=false '
+        'para subir sem banco: %s',
+        tentativas, type(ultima_exc).__name__, ultima_exc, url_mascarada,
+    )
+    print(f'BANCO INACESSIVEL apos {tentativas} tentativa(s): {ultima_exc}')
+    return False
+
+
+# ============================================
 # CRIAÇÃO DAS TABELAS E ADMIN
 # ============================================
 with app.app_context():
+    if not _verificar_conexao_banco():
+        if app.config.get('IS_PRODUCTION'):
+            print('BANCO DE DADOS INACESSIVEL — servico NAO iniciado (DB_BOOT_CHECK=true). Detalhes em logs/app.log')
+            raise SystemExit(1)
+        app.logger.critical(
+            'Banco inacessivel — subindo em modo degradado (desenvolvimento): '
+            'telas que usam o banco vao retornar 503.'
+        )
+        print('AVISO: banco inacessivel — subindo em modo degradado (desenvolvimento).')
     try:
         db.create_all()
 
         admin = Usuario.query.filter_by(login='admin').first()
         if not admin:
             admin = Usuario(login='admin', is_admin=True, is_superadmin=True, perfil='CA.9')
-            admin.set_password(os.getenv('ADMIN_PASSWORD', 'troque-essa-senha'))
+            # Nunca criar o superadmin com senha default conhecida no codigo:
+            # sem ADMIN_PASSWORD no ambiente, gera senha aleatoria e registra
+            # apenas no log de bootstrap (trocar no primeiro acesso).
+            senha_bootstrap = os.getenv('ADMIN_PASSWORD')
+            if not senha_bootstrap:
+                senha_bootstrap = secrets.token_urlsafe(24)
+                app.logger.critical(
+                    "ADMIN_PASSWORD nao definida: senha temporaria gerada para o "
+                    "usuario 'admin'. Defina ADMIN_PASSWORD no .env e troque a "
+                    "senha imediatamente apos o primeiro login."
+                )
+            admin.set_password(senha_bootstrap)
             db.session.add(admin)
             db.session.commit()
         else:
@@ -882,7 +995,12 @@ with app.app_context():
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(Usuario, int(user_id))
+    # Cookie de sessao adulterado (user_id nao numerico) nao pode derrubar
+    # a requisicao com 500 — tratar como sessao invalida.
+    try:
+        return db.session.get(Usuario, int(user_id))
+    except (TypeError, ValueError):
+        return None
 
 
 def _readiness_status() -> tuple[bool, dict[str, str]]:
@@ -915,7 +1033,7 @@ def healthz():
             "path": request.path,
             "status_code": 200,
             "duration_ms": None,
-            "ip": request.headers.get("X-Forwarded-For", request.remote_addr) or "",
+            "ip": ip_origem_requisicao(),
         }
     )
     return jsonify({"status": "ok"}), 200
@@ -936,6 +1054,7 @@ def readyz():
     return jsonify(payload), (200 if pronto else 503)
 
 @app.get('/metrics')
+@audit_event()
 def metrics():
     # Resposta Prometheus dos contadores/histogramas em memória
     return _formatar_metricas_prometheus(), 200, {
@@ -950,7 +1069,6 @@ def metrics():
 @login_required
 @audit_event()
 def painel():
-    print(app.logger.handlers)
     perfil = obter_perfil_usuario(current_user)
     ordem_nome = (
         func.lower(func.trim(func.coalesce(Funcionario.nome_completo, ''))),
@@ -1061,19 +1179,32 @@ def observabilidade():
         detalhes=detalhes,
         uptime=uptime_formatado
     )
-# ============================================
-# MIGRAÇÃO / IMPORTAÇÃO
-# ============================================
-@app.route('/migrar')
-@login_required
-@audit_event()
-def migrar_dados():
-    flash('A rota /migrar precisa ser adaptada para a planilha única nova antes do uso.', 'warning')
-    return redirect(url_for('painel'))
-
+# A importacao/migracao de dados em massa e feita por rotas de planilha
+# (routes/planilha.py) e por scripts CLI (scripts/migrate_sqlite_to_sqlserver.py,
+# importar_funcionarios.py) — nao existe rota de migracao no app.
 # INICIALIZAÇÃO
 # ============================================
 if __name__ == '__main__':
     from waitress import serve
-    porta = int(os.getenv('PORT', '8080'))
-    serve(app, host='0.0.0.0', port=porta)
+
+    porta = int(os.getenv('PORT', '8081'))
+    host = os.getenv('HOST', '0.0.0.0')
+    threads = int(os.getenv('WAITRESS_THREADS', '8'))
+    connection_limit = int(os.getenv('WAITRESS_CONNECTION_LIMIT', '100'))
+    channel_timeout = int(os.getenv('WAITRESS_CHANNEL_TIMEOUT', '120'))
+
+    serve(
+        app,
+        host=host,
+        port=porta,
+        threads=threads,
+        connection_limit=connection_limit,
+        channel_timeout=channel_timeout,
+        # Descarta X-Forwarded-* enviados direto pelo cliente (padrao do
+        # waitress 2+; explicito aqui para nao depender de default silencioso).
+        clear_untrusted_proxy_headers=True,
+        # Atras de proxy reverso local (IIS ARR/nginx na mesma maquina),
+        # descomente as duas linhas abaixo e defina TRUST_XFF=true no .env:
+        # trusted_proxy='127.0.0.1',
+        # url_scheme='https',
+    )
