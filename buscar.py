@@ -1,9 +1,12 @@
 from whoosh.index import open_dir
 from whoosh.qparser import MultifieldParser, OrGroup
 from whoosh.query import Term, And
+import os
 
 CAMINHO_INDICE = "indice_funcionarios"
 ix = open_dir(CAMINHO_INDICE)
+with ix.searcher() as s:
+    print("Whoosh abriu com", s.doc_count(), "documentos")
 
 
 def buscar(termo=None, vinculo=None, diretoria=None, area=None, cargo=None):

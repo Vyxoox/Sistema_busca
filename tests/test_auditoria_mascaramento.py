@@ -8,26 +8,26 @@ from services.auditoria_services import _serializar_detalhes
 class TestAuditoriaMascaramento(unittest.TestCase):
     def test_chave_sensivel_password(self) -> None:
         bruto = _serializar_detalhes({"password": "abc123", "acao": "teste"})
-        self.assertIsNotNone(bruto)
+        assert bruto is not None  # estreitamento p/ verificador estatico
         obj = json.loads(bruto)
         self.assertEqual(obj["password"], "****")
         self.assertNotIn("abc123", bruto)
 
     def test_cpf_em_texto_livre(self) ->  None:
         bruto = _serializar_detalhes({"mensagem": "CPF informado 123.456.789-00 no cadastro"})
-        self.assertIsNotNone(bruto)
+        assert bruto is not None  # estreitamento p/ verificador estatico
         self.assertNotIn("123.456.789-00", bruto)
         self.assertIn("[cpf_mascarado]", bruto)
 
     def test_email_em_texto_livre(self) -> None:
         bruto = _serializar_detalhes({"mensagem": "Contato: joao.silva@orgao.gov.br"})
-        self.assertIsNotNone(bruto)
+        assert bruto is not None  # estreitamento p/ verificador estatico
         self.assertNotIn("joao.silva@orgao.gov.br", bruto)
         self.assertIn("[email_mascarado]", bruto)
 
     def test_telefone_em_texto_livre(self) -> None:
         bruto = _serializar_detalhes({"mensagem": "Telefone (11) 98765-4321"})
-        self.assertIsNotNone(bruto)
+        assert bruto is not None  # estreitamento p/ verificador estatico
         self.assertNotIn("98765-4321", bruto)
         self.assertIn("[telefone_mascarado]", bruto)
 
@@ -40,6 +40,7 @@ class TestAuditoriaMascaramento(unittest.TestCase):
             "session_id": sess,
             "timestamp_utc": "2026-04-17T12:41:30.815905+00:00",
         })
+        assert bruto is not None
         obj = json.loads(bruto)
         self.assertEqual(obj["request_id"], req)
         self.assertEqual(obj["correlation_id"], req)
@@ -47,6 +48,7 @@ class TestAuditoriaMascaramento(unittest.TestCase):
 
     def test_numero_solto_nao_telefone(self) -> None:
         bruto = _serializar_detalhes({"mensagem": "trace 12345678"})
+        assert bruto is not None
         self.assertIn("12345678", bruto)
 
 if __name__ == "__main__":

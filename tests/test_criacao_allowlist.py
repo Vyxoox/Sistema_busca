@@ -37,6 +37,7 @@ class TestCriacaoAllowlist(unittest.TestCase):
         form["situacao"] = "VALOR_INVALIDO"
         campo, erro = _validar_selects_cadastro(form)
         self.assertEqual(campo, "situacao")
+        assert erro is not None
         self.assertIn("Situacao", erro)
 
     def test_subtipo_obrigatorio(self) -> None:
@@ -44,6 +45,7 @@ class TestCriacaoAllowlist(unittest.TestCase):
         form["subtipo_vinculo"] = ""
         campo, erro = _validar_selects_cadastro(form)
         self.assertEqual(campo, "subtipo_vinculo")
+        assert erro is not None
         self.assertIn("Subtipo", erro)
 
     def test_case_insensitive(self) -> None:

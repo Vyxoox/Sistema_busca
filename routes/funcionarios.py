@@ -26,7 +26,7 @@ def inativar_funcionario(id):
         flash('Acesso negado: Você não tem privilégios administrtativos.', 'error')
         return redirect(url_for('painel'))
 
-    func = Funcionario.query.get_or_404(id)
+    func = db.get_or_404(Funcionario, id)
     valores_antes= {
         'ativo': func.ativo,
         'situacao': func.situacao,
@@ -78,7 +78,7 @@ def reativar_funcionario(id):
         flash('Acesso negado: você não tem privilégios administrativos', 'error')
         return redirect(url_for('painel'))
 
-    func = Funcionario.query.get_or_404(id)
+    func = db.get_or_404(Funcionario, id)
 
     valores_antes = {
         'ativo': func.ativo,

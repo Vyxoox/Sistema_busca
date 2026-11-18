@@ -1,10 +1,26 @@
+from typing import TYPE_CHECKING, Any
+
 from core.extensions import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, UTC
 
 
-class Usuario(UserMixin, db.Model):
+if TYPE_CHECKING:
+    class _ConstrutorDeclarativo:
+        """Stub de tipagem: o SQLAlchemy injeta o construtor __init__(**kw)
+        nos models em tempo de execucao. Para Pylance/mypy esse construtor
+        nao existe, o que gera falsos "No parameter named ..." em toda
+        instanciacao de model (app.py, routes/, services/). Esta classe
+        existe apenas na checagem estatica e nao altera o runtime."""
+
+        def __init__(self, **kw: Any) -> None: ...
+else:
+    class _ConstrutorDeclarativo:
+        pass
+
+
+class Usuario(UserMixin, db.Model, _ConstrutorDeclarativo):
     __tablename__ = 'usuarios'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -25,7 +41,7 @@ class Usuario(UserMixin, db.Model):
         return str(self.id)
 
 
-class Funcionario(db.Model):
+class Funcionario(db.Model, _ConstrutorDeclarativo):
     __tablename__ = 'funcionarios'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -40,7 +56,9 @@ class Funcionario(db.Model):
     data_nasc = db.Column(db.Date, nullable=True)
     endereco_residencial = db.Column(db.String(255), nullable=True)
     telefone_pessoal = db.Column(db.String(20), nullable=True)
+    contato_emergencia = db.Column(db.String(20), nullable=True)
     email_pessoal = db.Column(db.String(150), nullable=True)
+    foto_perfil = db.Column(db.String(255), nullable=True)
 
     email_institucional = db.Column(db.String(150), nullable=True)
     ramal = db.Column(db.String(20), nullable=True)
@@ -80,7 +98,7 @@ class Funcionario(db.Model):
     data_atualizacao = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
 
-class LogAuditoria(db.Model):
+class LogAuditoria(db.Model, _ConstrutorDeclarativo):
     __tablename__ = 'logs_auditoria'
 
     id = db.Column(db.Integer, primary_key=True)

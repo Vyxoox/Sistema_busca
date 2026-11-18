@@ -91,11 +91,6 @@ def criar_admin():
                     'perfil_informado': lotacao or None,
                 },
             )
-        login = (request.form.get('login') or '').strip()
-        password = request.form.get('password') or ''
-        confirm_password = request.form.get('confirm_password') or ''
-        lotacao = (request.form.get('lotacao') or '').strip().upper()
-
         if not login:
             errors['login'] = 'O nome de usuário é obrigatório.'
         elif UsuarioRepository.buscar_por_login(login):
@@ -123,7 +118,7 @@ def criar_admin():
                 registrar_falha_validacao('validacao_campos')
             return render_template('criar_usuario.html', errors=errors, form_data=form_data)
 
-            # Se passou por tudo, cria o usuário
+        # Se passou por tudo, cria o usuário
         usuario = Usuario(
             login=login,
             perfil=lotacao,
@@ -131,15 +126,27 @@ def criar_admin():
             is_superadmin=False
         )
         usuario.set_password(password)
-        UsuarioRepository.salvar(usuario)
 
         try:
-            flash('Administrador criado com sucesso!', 'success')
-            return redirect(url_for('usuarios.listar_admin'))
+            UsuarioRepository.salvar(usuario)
         except IntegrityError:
+            # Corrida rara: outro admin criou o mesmo login entre a
+            # checagem inicial e o INSERT (chave unica no banco).
             db.session.rollback()
-            flash('Erro interno ao salvar', 'error')
-            return render_template('criar_usuario.html',form_data=form_data)
+            registrar_falha_validacao('login_duplicado')
+            errors['login'] = 'Este login já está em uso.'
+            return render_template('criar_usuario.html', errors=errors, form_data=form_data)
+
+        registrar_evento_seguro(
+            'USUARIO_CRIAR_ADMIN_SUCESSO',
+            categoria='administracao',
+            status='sucesso',
+            recurso='usuario',
+            recurso_id=str(usuario.id),
+            detalhes={'login_informado': login, 'perfil_informado': lotacao},
+        )
+        flash('Administrador criado com sucesso!', 'success')
+        return redirect(url_for('usuarios.listar_admin'))
 
     return render_template('criar_usuario.html', form_data=form_data, errors=errors)
 
@@ -193,7 +200,7 @@ def resetar_senha_admin(usuario_id: int):
         except Exception as e:
             db.session.rollback()
             registrar_falha('erro_salvar', erro=str(e))
-            flash(f'Não foi possível alterar a senha.', 'error')
+            flash('Não foi possível alterar a senha.', 'error')
             return redirect(request.url)
 
         registrar_evento_seguro(

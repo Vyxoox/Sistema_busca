@@ -45,7 +45,7 @@ def login():
                 processar_alertas=False,
             )
             flash(
-                f'Este IP está bloqueado por segurança. Contate o administrador do sistema para liberação.',
+                'Este IP está bloqueado por segurança. Contate o administrador do sistema para liberação.',
                 'error',
             )
             return render_template('login.html'), 429

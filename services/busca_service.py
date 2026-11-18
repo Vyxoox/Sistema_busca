@@ -121,7 +121,9 @@ def executar_busca(ix, query, vinculo_selecionado):
             q_final = Term("id", "__no_access__")
 
         results = searcher.search(q_final, limit=None)
+        print("DOCUMENTOS NO WHOOSH:", len(results))
         resultados = [dict(r) for r in results]
+        print("RESULTADOS CONVERTIDOS:", len(resultados))
 
         if coord_req_usuario:
             resultados = [
@@ -131,6 +133,7 @@ def executar_busca(ix, query, vinculo_selecionado):
 
         if not query:
             resultados.sort(key=lambda r: _chave_ordenacao(r, separar_por_vinculo))
+            print("RETORNANDO =", len(resultados))
             return resultados
 
         q_lower = query.lower()

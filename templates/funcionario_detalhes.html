@@ -325,6 +325,11 @@
             </div>
 
             <div class="info-item">
+                <span class="info-label">Contato de Emergência</span>
+                <span class="info-value">{{ funcionario.contato_emergencia or '-' }}</span>
+            </div>
+
+            <div class="info-item">
                 <span class="info-label">Email Pessoal</span>
                 <span class="info-value">{{ funcionario.email_pessoal or '-' }}</span>
             </div>
@@ -356,27 +361,26 @@
                 <span class="info-label">Forma de Ingresso</span>
                 <span class="info-value">{{ funcionario.forma_ingresso or '-' }}</span>
             </div>
-
             <div class="info-item">
                 <span class="info-label">Prontuário Funcional</span>
                 <span class="info-value">{{ funcionario.prontuario_funcional or '-' }}</span>
             </div>
-
+            {% if funcionario.vinculo == 'SERVIDOR' %}
             <div class="info-item">
                 <span class="info-label">Matrícula</span>
                 <span class="info-value">{{ funcionario.matricula or '-' }}</span>
             </div>
-
+            {% endif %}
             <div class="info-item">
                 <span class="info-label">Cargo em Exercício</span>
                 <span class="info-value">{{ funcionario.cargo_exercicio or '-' }}</span>
             </div>
-
+            {% if funcionario.vinculo == 'SERVIDOR' %}
             <div class="info-item">
                 <span class="info-label">Cargo de Origem</span>
                 <span class="info-value">{{ funcionario.cargo_origem or '-' }}</span>
             </div>
-
+            {% endif %}
             <div class="info-item">
                 <span class="info-label">Lotação</span>
                 <span class="info-value">{{ funcionario.lotacao or '-' }}</span>
@@ -391,12 +395,12 @@
                 <span class="info-label">Coordenadoria</span>
                 <span class="info-value">{{ funcionario.coordenadoria or '-' }}</span>
             </div>
-
+            {% if funcionario.vinculo == 'SERVIDOR' %}
             <div class="info-item">
                 <span class="info-label">DOE / Portaria</span>
                 <span class="info-value">{{ funcionario.doe_portaria or '-' }}</span>
             </div>
-
+            {% endif %}
             <div class="info-item">
                 <span class="info-label">Situação</span>
                 <span class="info-value">{{ funcionario.situacao or '-' }}</span>
@@ -409,21 +413,24 @@
                 <span class="info-label">Data de Ingresso no DER</span>
                 <span class="info-value">{{ funcionario.data_ingresso_der.strftime('%d/%m/%Y') if funcionario.data_ingresso_der else '-' }}</span>
             </div>
-
+            {% if funcionario.vinculo == 'SERVIDOR' %}
             <div class="info-item">
                 <span class="info-label">Data de Início</span>
                 <span class="info-value">{{ funcionario.data_inicio.strftime('%d/%m/%Y') if funcionario.data_inicio else '-' }}</span>
             </div>
-
+            {% endif %}
+            {% if funcionario.vinculo == 'TERCEIRIZADO' %}
             <div class="info-item">
                 <span class="info-label">Data de Admissão</span>
                 <span class="info-value">{{ funcionario.data_admissao.strftime('%d/%m/%Y') if funcionario.data_admissao else '-' }}</span>
             </div>
-
+            {% endif %}
+            {% if (funcionario.situacao and funcionario.situacao|upper != 'ATIVO') or funcionario.data_desligamento %}
             <div class="info-item">
                 <span class="info-label">Data de Desligamento</span>
                 <span class="info-value">{{ funcionario.data_desligamento.strftime('%d/%m/%Y') if funcionario.data_desligamento else '-' }}</span>
             </div>
+            {% endif %}
         </div>
 
         {% if funcionario.vinculo == 'TERCEIRIZADO' %}

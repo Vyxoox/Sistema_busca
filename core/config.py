@@ -5,10 +5,22 @@ def _engine_options(database_uri: str | None) -> dict:
     options = {
         "pool_pre_ping": True,
         "pool_recycle": 1800,
+        # "timeout" do pyodbc = timeout de LOGIN (SQL_ATTR_LOGIN_TIMEOUT):
+        # quanto tempo esperar o SQL Server responder a conexao.
         "connect_args": {
             "timeout": 10
         }
     }
+
+    # NOTA (licao aprendida em campo, 2026-11-03): o timeout de EXECUCAO de
+    # query NAO pode ser definido aqui. O atributo SQL_ATTR_QUERY_TIMEOUT e
+    # um atributo de STATEMENT — passa-lo em attrs_before (que usa
+    # SQLSetConnectAttr, nivel de CONEXAO) derruba TODAS as conexoes com
+    # HY092 ("identificador de atributo/opcao invalido"), mesmo com o banco
+    # perfeitamente saudavel. O timeout de query e aplicado em app.py, no
+    # evento `connect` do engine, via `cnxn.timeout` do pyodbc — que o aplica
+    # por statement com SQLSetStmtAttr (mecanismo correto, verificado no
+    # codigo-fonte do pyodbc 5.3.0, cursor.cpp).
 
     return options
 
@@ -49,7 +61,19 @@ class Config:
 
     PREFERRED_URL_SCHEME = "https"
 
+    # IP de origem: com o waitress exposto diretamente (cenario atual),
+    # manter False — o app ignora X-Forwarded-For (forjavel pelo cliente)
+    # e usa remote_addr. Defina True SOMENTE atras de proxy reverso
+    # confiavel (IIS ARR/nginx); nesse caso o app usa o ULTIMO hop do
+    # XFF, aquele adicionado pelo proxy da propria infraestrutura.
+    TRUST_XFF = os.getenv("TRUST_XFF", "false").strip().lower() in {"1", "true", "yes", "sim", "on"}
+
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024
+
+    # Timeout de EXECUCAO de query no SQL Server (segundos; 0 desativa).
+    # Aplicado por pyodbc a cada statement (SQL_ATTR_QUERY_TIMEOUT), via
+    # evento `connect` em app.py — nunca via connect_args/attrs_before.
+    DB_STATEMENT_TIMEOUT = int(os.getenv("DB_STATEMENT_TIMEOUT", "300"))
 
     ALERTAS_HABILITADOS = os.getenv("ALERTAS_HABILITADOS", "true").lower() == "true"
     ALERTA_FUSO_HORARIO = os.getenv("ALERTA_FUSO_HORARIO", "America/Sao_Paulo").strip()

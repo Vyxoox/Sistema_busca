@@ -10,7 +10,9 @@ def audit_event(acao : str | None = None, *, categoria: str = "operacao", recurs
         def wrapper(*args: Any, **kwargs: Any):
             return fn(*args, **kwargs)
 
-        wrapper.__audit_required__ = True
-        wrapper.__audit_meta__ = {"acao": acao_final, "categoria": categoria, "recurso": recurso}
+        # setattr: o wrapper e tipado como _Wrapped pelo functools, que nao
+        # declara atributos dinamicos — setattr evita o falso positivo.
+        setattr(wrapper, "__audit_required__", True)
+        setattr(wrapper, "__audit_meta__", {"acao": acao_final, "categoria": categoria, "recurso": recurso})
         return wrapper
     return deco

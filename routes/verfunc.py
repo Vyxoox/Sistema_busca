@@ -1,17 +1,69 @@
-from flask import render_template, redirect, url_for, flash, request, app, Blueprint
-from flask_login import login_required
+from flask import render_template, redirect, url_for, flash, request, abort, Blueprint
+from flask_login import login_required, current_user
 
+from core import db
 from core.audit_policy import audit_event
 from models import Funcionario
 from services.normalizacao_service import normalizar_maiusculo
 from services.auditoria_services import registrar_evento_seguro
+from services.busca_service import (
+    obter_perfil_usuario,
+    PERFIS_TODOS,
+    PERFIS_TERCEIRO_COORD,
+)
 verfunc_bp = Blueprint('verfunc', __name__)
+
+
+def _funcionario_visivel_para_user(funcionario) -> bool:
+    """Aplica a visualizacao o mesmo escopo de perfil da busca e do painel.
+
+    - superadmin / perfis CA.9 e SA.9: acesso total;
+    - admin sem perfil: acesso total (paridade com busca_service);
+    - CGR.9 / CO.9 / CT.9: somente terceirizados da propria coordenadoria;
+    - demais perfis: nenhum acesso.
+    """
+    perfil = obter_perfil_usuario(current_user)
+
+    if current_user.is_superadmin or perfil in PERFIS_TODOS:
+        return True
+
+    if current_user.is_admin and not (current_user.perfil or '').strip():
+        return True
+
+    if perfil in PERFIS_TERCEIRO_COORD:
+        if str(funcionario.vinculo or '').strip().upper() != 'TERCEIRIZADO':
+            return False
+        coord = perfil.upper()
+        valores = (
+            str(funcionario.coordenadoria or '').upper(),
+            str(funcionario.area or '').upper(),
+            str(funcionario.lotacao or '').upper(),
+        )
+        return any(coord in valor for valor in valores)
+
+    return False
+
 
 @verfunc_bp.route('/funcionario/<int:funcionario_id>')
 @login_required
 @audit_event()
 def ver_funcionario(funcionario_id):
-    funcionario = Funcionario.query.get_or_404(funcionario_id)
+    funcionario = db.get_or_404(Funcionario, funcionario_id)
+
+    if not _funcionario_visivel_para_user(funcionario):
+        registrar_evento_seguro(
+            'FUNCIONARIO_VISUALIZAR_NEGADO',
+            categoria='seguranca',
+            status='falha',
+            recurso='funcionario',
+            recurso_id=str(funcionario.id),
+            detalhes={
+                'motivo': 'fora_do_escopo_do_perfil',
+                'perfil': obter_perfil_usuario(current_user),
+            },
+        )
+        abort(404)
+
     registrar_evento_seguro(
         'FUNCIONARIO_VISUALIZAR',
         categoria='consulta',
@@ -62,14 +114,23 @@ def preencher_campos_comuns(func, form, prefixo=''):
 
     func.endereco_residencial = tratar_nao_se_aplica(form.get(f'{prefixo}endereco_residencial')) or ''
     func.telefone_pessoal = tratar_nao_se_aplica(form.get(f'{prefixo}telefone_pessoal'))
+    func.contato_emergencia = tratar_nao_se_aplica(form.get(f'{prefixo}contato_emergencia'))
     func.email_pessoal = tratar_nao_se_aplica(form.get(f'{prefixo}email_pessoal'))
     func.email_institucional = obter_email_institucional(form, prefixo)
     func.ramal = normalizar_ramal(form.get(f'{prefixo}ramal'))
 
+    from core.constante import MAP_FORMA_INGRESSO, MAP_SITUACAO
     func.vinculo = normalizar_maiusculo(form.get(f'{prefixo}vinculo')) or func.vinculo
     func.tipo = normalizar_maiusculo(form.get(f'{prefixo}tipo'))
     func.subtipo_vinculo = normalizar_maiusculo(form.get(f'{prefixo}subtipo_vinculo'))
-    func.forma_ingresso = normalizar_titulo(form.get(f'{prefixo}forma_ingresso')) or ''
+    
+    val_fi = form.get(f'{prefixo}forma_ingresso')
+    if val_fi:
+        val_fi_clean = str(val_fi).strip()
+        func.forma_ingresso = MAP_FORMA_INGRESSO.get(val_fi_clean.upper(), normalizar_titulo(val_fi_clean))
+    else:
+        func.forma_ingresso = ''
+
     func.prontuario_funcional = tratar_nao_se_aplica(form.get(f'{prefixo}prontuario_funcional'))
 
     func.cargo_exercicio = normalizar_titulo(form.get(f'{prefixo}cargo_exercicio'))
@@ -83,11 +144,16 @@ def preencher_campos_comuns(func, form, prefixo=''):
     func.data_inicio = parse_date(form.get(f'{prefixo}data_inicio'))
     func.data_admissao = parse_date(form.get(f'{prefixo}data_admissao'))
 
-    func.situacao = normalizar_titulo(form.get(f'{prefixo}situacao')) or ''
+    val_sit = form.get(f'{prefixo}situacao')
+    if val_sit:
+        val_sit_clean = str(val_sit).strip()
+        func.situacao = MAP_SITUACAO.get(val_sit_clean.upper(), normalizar_titulo(val_sit_clean))
+    else:
+        func.situacao = ''
     func.data_desligamento = parse_date(form.get(f'{prefixo}data_desligamento'))
 
     func.doe_portaria = tratar_nao_se_aplica(form.get(f'{prefixo}doe_portaria'))
-    func.ativo = True if normalizar_maiusculo(func.situacao or '') == 'ATIVO' else True  # mantém controle lógico ativo
+    func.ativo = (normalizar_maiusculo(func.situacao or '') == 'ATIVO')
 
     vinculo_norm = normalizar_maiusculo(func.vinculo)
 

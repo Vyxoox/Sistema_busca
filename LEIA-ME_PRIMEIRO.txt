@@ -1,0 +1,63 @@
+SISTEMA DE BUSCA - PACOTE COMPLETO ATUALIZADO (2026-11-03, rev. Lote 8b)
+================================================================
+
+Este zip contem o CODIGO INTEGRAL do sistema com todas as correcoes
+da varredura guiada (Lotes 1 a 8b: seguranca, tipagem, resiliencia a
+indisponibilidade do banco, operacao e novo visual dos relatorios)
+ja aplicadas e validadas (74/74 testes + pyright 0 erros no projeto).
+
+O que NAO veio no pacote (de proposito, por LGPD/seguranca):
+  - funcionarios.db          -> banco de dados
+  - dados/                   -> planilhas (funcionarios/servidores/terceirizados)
+  - documentos/              -> documentos digitalizados
+  - static/fotos_funcionarios/ -> fotos
+  - .env                     -> configuracao/segredos (vai apenas .env.example)
+  - logs/ e indice_funcionarios/ -> regeneraveis em execucao
+
+NOVIDADES DESTA REVISAO (Lotes 8 e 8b — visual dos relatorios):
+  - Relatorio /export/xlsx: titulo com metadados na tela, datas como
+    celula de data real, "Nao se aplica" em italico cinza, SITUACAO
+    colorida (Ativo verde), larguras auto-ajustadas, linhas de grade
+    ocultas, sem triangulos verdes, altura de linha automatica e
+    correcao da repeticao de linha na impressao.
+  - Ouvidoria: NOVO botao "Exportar Excel" (logs_ouvidoria_*.xlsx)
+    com o mesmo visual — data/hora real no fuso local, status
+    colorido (sucesso verde / falha vermelho), JSON de detalhes
+    legivel e filtros da tela respeitados. O botao "Exportar CSV"
+    continua disponivel para uso automatizado.
+  - Seguranca: o alerta de exportacao massiva agora conta CSV e
+    Excel no mesmo limite por usuario.
+  Amostras geradas com dados reais de producao:
+    amostra_relatorio_novo_formato.xlsx e
+    amostra_logs_ouvidoria_novo_formato.xlsx (versoes .pdf junto).
+
+------------------------------------------------------------------
+OPCAO A (RECOMENDADA): aplicar o patch na pasta do sistema real
+------------------------------------------------------------------
+1. Feche o servico em producao.
+2. Faca backup da pasta atual do sistema (ou confie no git).
+3. Extraia patch_relatorios_2026-11-03.zip POR CIMA da raiz do
+   projeto ("Sistema de busca - Copia - Copia"), substituindo
+   arquivos. Sao 6 arquivos: routes/planilha.py, routes/ouvidoria.py,
+   services/alertas_seguranca.py, templates/ouvidoria_logs.html e
+   2 arquivos de teste. (Se os Lotes 1-7 ainda nao foram aplicados,
+   aplique antes o patch_sistema_busca_2026-10-30.zip — veja o
+   CHANGELOG.md.)
+4. Rode: python -m pytest tests/ -q   (esperado: 74 passed)
+5. Reinicie: scripts/start_production.ps1
+6. Confira: baixe um relatorio em /export/xlsx e, na ouvidoria,
+   use o novo botao "Exportar Excel" com algum filtro ativo.
+
+------------------------------------------------------------------
+OPCAO B: testar este pacote completo em pasta separada
+------------------------------------------------------------------
+1. Extraia este zip (pasta sistema_busca_atualizado/).
+2. Copie da sua pasta de producao para a pasta extraida:
+     funcionarios.db, .env, dados/, documentos/, static/fotos_funcionarios/
+3. Crie/ative o venv que voce usa e instale dependencias:
+     pip install -r requirements.txt
+4. Rode os testes: python -m pytest tests/ -q
+5. Inicie: python app.py   (waitress na porta configurada no .env)
+
+IMPORTANTE: producao deve rodar sempre na pasta/servico oficial,
+nunca a partir de Downloads. Esta pasta e apenas para teste.

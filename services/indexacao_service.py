@@ -58,6 +58,8 @@ def reindexar_funcionario(ix, funcionario):
             email_institucional=(funcionario.email_institucional or '').strip(),
             email_pessoal=(funcionario.email_pessoal or '').strip(),
             telefone_pessoal=(funcionario.telefone_pessoal or '').strip(),
+            endereco_residencial=(funcionario.endereco_residencial or '').strip(),
+            contato_emergencia=(funcionario.contato_emergencia or '').strip(),
             ramal=(funcionario.ramal or '').strip(),
 
             cin=(funcionario.cin or '').strip(),
@@ -105,6 +107,8 @@ def reindexar_todos(ix):
             email_institucional=(func.email_institucional or '').strip(),
             email_pessoal=(func.email_pessoal or '').strip(),
             telefone_pessoal=(func.telefone_pessoal or '').strip(),
+            contato_emergencia=(func.contato_emergencia or '').strip(),
+            endereco_residencial=(func.endereco_residencial or '').strip(),
             ramal=(func.ramal or '').strip(),
             cin=(func.cin or '').strip(),
             titulo_eleitor=(func.titulo_eleitor or '').strip(),
